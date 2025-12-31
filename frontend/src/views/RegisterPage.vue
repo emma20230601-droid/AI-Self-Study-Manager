@@ -76,7 +76,7 @@ const handleRegister = async () => {
   loading.value = true;
   try {
     // 發送到後端 auth 路由
-    const response = await axios.post('http://localhost:5000/auth/register', {
+    const response = await axios.post('${import.meta.env.VITE_API_BASE_URL}', {
       username: form.value.username,
       password: form.value.password
     });
@@ -149,4 +149,5 @@ const handleRegister = async () => {
 :deep(.el-form-item) {
   margin-bottom: 18px;
 }
+
 </style>
