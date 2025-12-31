@@ -22,11 +22,11 @@
             placeholder="選擇科目" 
             clearable 
             size="large" 
-            style="width: 140px; margin-left: 10px;"
+            style="width: 140px"
           >
             <el-option v-for="item in subjectOrder" :key="item" :label="item" :value="item" />
           </el-select>
-          <el-button @click="clearFilter" size="large" round style="margin-left: 10px;">清除篩選</el-button>
+          <el-button @click="clearFilter" size="large" round>清除篩選</el-button>
         </div>
       </div>
 
@@ -55,7 +55,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="⏳ 狀態/倒數" width="110" align="center">
+        <el-table-column label="⏳ 倒數" width="110" align="center">
           <template #default="scope">
             <span v-if="scope.row.progress_percent === 100" class="status-done">已完成</span>
             <span v-else :class="{'status-urgent': scope.row.daysLeft < 0}">
@@ -71,6 +71,7 @@
               :step="10"
               show-input
               class="custom-slider"
+              :class="scope.row.progress_percent < 100 ? 'slider-not-finished' : 'slider-finished'"
             />
           </template>
         </el-table-column>
@@ -78,23 +79,27 @@
         <el-table-column label="💯 分數" width="110">
           <template #default="scope">
             <el-input
+              type="textarea"
               v-model="scope.row.score"
               placeholder="必填"
-              class="score-input"
-              :class="{ 'is-empty': !scope.row.score && row.score !== 0 }"
+              autosize
+              class="large-input score-input"
+              :class="{ 'is-empty': !scope.row.score || String(scope.row.score).trim() === '' }"
             />
           </template>
         </el-table-column>
 
         <el-table-column label="💭 學習筆記/錯題心得" min-width="250">
           <template #default="scope">
-            <el-input
-              type="textarea"
-              v-model="scope.row.student_note"
-              placeholder="輸入心得..."
-              autosize
-              class="large-input"
-            />
+            <div class="note-cell">
+              <el-input
+                type="textarea"
+                v-model="scope.row.student_note"
+                placeholder="點擊輸入心得..."
+                autosize
+                class="large-input"
+              />
+            </div>
           </template>
         </el-table-column>
 
@@ -114,28 +119,30 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
 
+const progressTable = ref(null)
 const selectedMonth = ref(dayjs().format('YYYY-MM'))
 const selectedSubject = ref(null)
 const userId = parseInt(localStorage.getItem('user_id'))
 const progressList = ref([])
 
-const subjectOrder = ['國語', '數學', '英文', '社會', '自然', '理化', '生物', '其它', '藝術', '國中入學考', '小科加課']
+const subjectOrder = ['國語', '數學', '英文', '社會', '自然', '其它']
 
-// 獲取資料
 const fetchProgress = async () => {
   try {
-    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/progress/with_tasks`, {
+     const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/progress/with_tasks`, {
       params: { user_id: userId },
       withCredentials: true
     });
-    progressList.value = res.data.map(item => ({
-      ...item,
-      daysLeft: getDaysLeft(item.target_date, item.progress_percent === 100)
-    }))
-  } catch (err) { 
-    console.error('抓取資料失敗:', err)
-    ElMessage.error('無法連線到伺服器')
-  }
+
+    progressList.value = res.data.map(item => {
+      const isCompleted = Number(item.progress_percent) === 100 || item.status === '已完成'
+      return {
+        ...item,
+        progress_percent: isCompleted ? 100 : (item.progress_percent || 0),
+        daysLeft: getDaysLeft(item.target_date, isCompleted),
+      }
+    })
+  } catch (err) { console.error(err) }
 }
 
 const filteredAndSortedList = computed(() => {
@@ -150,26 +157,19 @@ const filteredAndSortedList = computed(() => {
 })
 
 const tableRowClassName = ({ row }) => {
-  return dayjs(row.target_date).isSame(dayjs(), 'day') ? 'row-today' : ''
+  return dayjs(row.target_date).format('YYYY-MM-DD') === dayjs().format('YYYY-MM-DD') ? 'row-today' : ''
 }
 
-// 🚀 儲存功能
 const saveProgress = async (row) => {
-  // 分數校驗
   if (row.score === null || row.score === undefined || String(row.score).trim() === '') {
-    ElMessage.warning(`請填寫「${row.subject}」的分數後再儲存`)
-    return
+    ElMessage.warning({
+      message: `請填寫「${row.subject}」的分數後再儲存`,
+      showClose: true,
+      duration: 3000
+    })
+    return 
   }
 
-  const payload = { 
-    task_id: row.task_id, 
-    progress_percent: row.progress_percent, 
-    student_note: row.student_note || '', 
-    score: row.score, 
-    date: dayjs().format('YYYY-MM-DD'), 
-    user_id: userId 
-  }
-  
   try {
     if (row.id) {
       try {
@@ -199,7 +199,7 @@ const saveProgress = async (row) => {
     }
     
     ElMessage.success('儲存成功！')
-  } catch (err) { 
+   } catch (err) { 
     console.error('儲存失敗:', err)
     ElMessage.error('儲存失敗，請確認網路連線') 
   }
@@ -209,48 +209,66 @@ const getDaysLeft = (targetDate, isCompleted) => isCompleted ? 0 : dayjs(targetD
 const formatDate = (dateStr) => dayjs(dateStr).format('YYYY-MM-DD')
 const clearFilter = () => { selectedMonth.value = null; selectedSubject.value = null }
 
-onMounted(fetchProgress)
+onMounted(async () => {
+  await fetchProgress()
+})
 </script>
 
 <style scoped>
 .full-page-container {
   padding: 20px;
-  background: #f5f7fa;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
   min-height: calc(100vh - 60px);
 }
 
 .main-card-full {
-  border-radius: 20px;
+  border-radius: 24px;
+  border: none;
   height: calc(100vh - 100px);
-  box-shadow: 0 8px 30px rgba(0,0,0,0.05);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+  overflow: hidden;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 20px;
+  align-items: flex-start;
+  padding: 10px 10px 20px 10px;
 }
+
+h2 { font-size: 2.2rem; font-weight: 900; color: #1a1a1a; margin: 0; }
+.header-hint { font-size: 1.05rem; color: #7f8c8d; margin-top: 5px; }
+
+:deep(.el-table) { font-size: 1.15rem; border-radius: 16px; overflow: hidden; }
+:deep(.el-table th.el-table__cell) { background-color: #f8f9fb !important; color: #2c3e50; font-weight: 800; height: 65px; }
 
 .subject-tag {
   background: #e6f7ff;
+  padding: 6px 14px;
+  border-radius: 20px;
   color: #1890ff;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-weight: bold;
+  font-weight: 800;
+  display: inline-block;
 }
 
-.status-done { color: #52c41a; font-weight: bold; }
-.status-urgent { color: #ff4d4f; font-weight: bold; }
+.score-input.is-empty :deep(.el-textarea__inner) {
+  border: 1px solid #ffbb96 !important;
+  background-color: #fff7e6 !important;
+}
+
+.status-done { background: #f6ffed; color: #52c41a; padding: 4px 12px; border-radius: 10px; font-weight: bold; }
+.status-urgent { background: #fff1f0; color: #ff4d4f; padding: 4px 12px; border-radius: 10px; font-weight: bold; }
+
+.note-cell { display: flex; gap: 10px; align-items: flex-start; }
 
 .large-input :deep(.el-textarea__inner) {
-  border-radius: 8px;
-  padding: 8px;
+  font-size: 1.1rem;
+  padding: 10px;
+  border-radius: 12px;
 }
 
-.score-input.is-empty :deep(.el-input__inner) {
-  border-color: #ffa39e;
-  background-color: #fff1f0;
-}
+.row-today { background-color: #fffdf0 !important; }
+.row-today td:first-child { border-left: 8px solid #faad14 !important; }
 
-.row-today { background-color: #fffbe6 !important; }
+.el-button { border-radius: 12px; font-weight: 600; }
 </style>
