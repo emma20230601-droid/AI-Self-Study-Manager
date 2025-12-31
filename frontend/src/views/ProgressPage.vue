@@ -22,11 +22,11 @@
             placeholder="選擇科目" 
             clearable 
             size="large" 
-            style="width: 140px"
+            style="width: 140px; margin-left: 10px;"
           >
             <el-option v-for="item in subjectOrder" :key="item" :label="item" :value="item" />
           </el-select>
-          <el-button @click="clearFilter" size="large" round>清除篩選</el-button>
+          <el-button @click="clearFilter" size="large" round style="margin-left: 10px;">清除篩選</el-button>
         </div>
       </div>
 
@@ -71,7 +71,6 @@
               :step="10"
               show-input
               class="custom-slider"
-              :class="scope.row.progress_percent < 100 ? 'slider-not-finished' : 'slider-finished'"
             />
           </template>
         </el-table-column>
@@ -142,7 +141,7 @@ const fetchProgress = async () => {
         daysLeft: getDaysLeft(item.target_date, isCompleted),
       }
     })
-  } catch (err) { console.error(err) }
+  } catch (err) { console.error('抓取資料失敗:', err) }
 }
 
 const filteredAndSortedList = computed(() => {
@@ -161,6 +160,7 @@ const tableRowClassName = ({ row }) => {
 }
 
 const saveProgress = async (row) => {
+  // 1. 分數必填校驗
   if (row.score === null || row.score === undefined || String(row.score).trim() === '') {
     ElMessage.warning({
       message: `請填寫「${row.subject}」的分數後再儲存`,
@@ -170,27 +170,37 @@ const saveProgress = async (row) => {
     return 
   }
 
+  // 2. 定義 payload (確保在 try 區塊外定義，避免 ReferenceError)
+  const payload = { 
+    task_id: row.task_id, 
+    progress_percent: row.progress_percent, 
+    student_note: row.student_note || '', 
+    score: row.score, 
+    date: dayjs().format('YYYY-MM-DD'), 
+    user_id: userId 
+  }
+
   try {
     if (row.id) {
       try {
         // 嘗試更新 (PATCH)
         await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/progress/${row.id}`, payload, { withCredentials: true });
       } catch (patchErr) {
-        // 如果報 404，代表雲端沒這筆 ID，改走 POST 新增
+        // 關鍵容錯：如果回傳 404，代表雲端資料庫沒這筆 ID，立刻轉為 POST 新增
         if (patchErr.response?.status === 404) {
           const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/progress`, payload, { withCredentials: true });
-          row.id = res.data.id;
+          row.id = res.data.id; // 回填 ID 供下次 PATCH 使用
         } else {
           throw patchErr;
         }
       }
     } else {
-      // 直接新增 (POST)
+      // 本來就沒 ID，直接新增 (POST)
       const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/progress`, payload, { withCredentials: true });
       row.id = res.data.id;
     }
     
-    // 如果進度 100%，同步更新 Task 狀態
+    // 3. 進度 100% 同步更新任務表狀態
     if (row.progress_percent === 100) {
       await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${row.task_id}`, 
         { status: '已完成', user_id: userId }, 
@@ -198,10 +208,10 @@ const saveProgress = async (row) => {
       );
     }
     
-    ElMessage.success('儲存成功！')
-   } catch (err) { 
+    ElMessage.success('學習進度已成功儲存！')
+  } catch (err) { 
     console.error('儲存失敗:', err)
-    ElMessage.error('儲存失敗，請確認網路連線') 
+    ElMessage.error('儲存失敗，請檢查網路連線或稍後再試') 
   }
 }
 
@@ -209,9 +219,7 @@ const getDaysLeft = (targetDate, isCompleted) => isCompleted ? 0 : dayjs(targetD
 const formatDate = (dateStr) => dayjs(dateStr).format('YYYY-MM-DD')
 const clearFilter = () => { selectedMonth.value = null; selectedSubject.value = null }
 
-onMounted(async () => {
-  await fetchProgress()
-})
+onMounted(fetchProgress)
 </script>
 
 <style scoped>
