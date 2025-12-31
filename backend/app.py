@@ -9,6 +9,7 @@ from routes.auth_routes import auth_bp
 from routes.review_routes import review_bp
 from routes.teacher_routes import teacher_bp
 from routes.config_routes import config_bp
+
 # 匯入原本的 config 作為備援
 try:
     from config import SQLALCHEMY_DATABASE_URI, SQLALCHEMY_TRACK_MODIFICATIONS
@@ -19,16 +20,12 @@ except ImportError:
 app = Flask(__name__)
 
 # --- 資料庫配置 ---
-# 優先讀取 Render 的 DATABASE_URL 環境變數
 db_url = os.environ.get('DATABASE_URL')
-
 if db_url:
-    # 修正 Render 常見的 postgres:// 格式問題
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 else:
-    # 如果環境變數不存在，才使用 config.py 的設定
     app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -36,21 +33,18 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # 初始化資料庫
 db.init_app(app)
 
-# --- CORS 設定 ---
-# 1. 基礎設定：允許認證資訊
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
+# --- CORS 終極設定 ---
+# 1. 基礎設定
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": "https://ai-self-study-manager.vercel.app"}})
 
-# 2. 強制手動處理 OPTIONS 預檢請求，解決 Vercel CORS 報錯
-@app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        response = make_response()
-        response.headers.add("Access-Control-Allow-Origin", "https://ai-self-study-manager.vercel.app")
-        # 修正重點：這裡要明確列出 Content-Type
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
-        response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        response.headers.add("Access-Control-Allow-Credentials", "true")
-        return response
+# 2. 全域攔截器：確保所有回應（包含報錯）都有 CORS 標頭
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "https://ai-self-study-manager.vercel.app"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 # --- 自動建立資料庫表 ---
 with app.app_context():
@@ -73,7 +67,5 @@ def hello():
     return 'Flask Self-Study Backend OK!'
 
 if __name__ == '__main__':
-    # Render 會自動設定 PORT 環境變數，本地則預設 5000
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
