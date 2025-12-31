@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request, make_response
 from config import SQLALCHEMY_DATABASE_URI, SQLALCHEMY_TRACK_MODIFICATIONS
 from database import db
 from routes.task_routes import task_bp
@@ -8,6 +8,7 @@ from routes.review_routes import review_bp
 from routes.teacher_routes import teacher_bp
 from routes.config_routes import config_bp
 from flask_cors import CORS
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
@@ -50,6 +51,7 @@ def hello():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
