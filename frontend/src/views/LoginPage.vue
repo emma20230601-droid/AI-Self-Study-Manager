@@ -44,7 +44,7 @@ const password = ref('')
 
 const login = async () => {
   try {
-    const res = await axios.post('http://localhost:5000/auth/login', {
+    const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
       username: username.value,
       password: password.value
     })
@@ -114,4 +114,5 @@ const login = async () => {
   font-size: 13px;
   color: #606266;
 }
+
 </style>
