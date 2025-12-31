@@ -3,7 +3,7 @@ from models import Progress
 from database import db
 from datetime import datetime
 
-progress_bp = Blueprint('progress', __name__, url_prefix='/progress')
+
 
 @progress_bp.route('', methods=['POST', 'OPTIONS'])
 def create_progress():
@@ -64,6 +64,10 @@ def get_progress_with_tasks():
 
 @progress_bp.route('/<int:progress_id>', methods=['PATCH', 'OPTIONS'])
 def update_progress(progress_id):
+    # 新增這兩行處理預檢
+    if request.method == 'OPTIONS':
+        return '', 200
+        
     data = request.get_json()
     user_id = data.get('user_id')
     if not user_id:
@@ -105,4 +109,5 @@ def update_progress(progress_id):
 
     db.session.commit()
     return jsonify(progress.to_dict())
+
 
