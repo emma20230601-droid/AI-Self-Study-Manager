@@ -139,7 +139,10 @@ const subjectOrder = ['國語', '數學', '英文', '社會', '自然', '理化'
 
 const fetchProgress = async () => {
   try {
-    const res = await axios.get(`http://localhost:5000/progress/with_tasks?user_id=${userId}`)
+    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/tasks`, {
+      params: { user_id: userId },
+      withCredentials: true
+    });
     progressList.value = res.data.map(item => {
       const isCompleted = Number(item.progress_percent) === 100 || item.status === '已完成'
       return {
@@ -189,15 +192,29 @@ const saveProgress = async (row) => {
     }
     
     if (row.id) {
-      await axios.patch(`http://localhost:5000/progress/${row.id}`, payload)
+      // 更新現有進度 (PATCH)
+      await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/progress/${row.id}`, payload, {
+        withCredentials: true
+      });
     } else {
-      const res = await axios.post('http://localhost:5000/progress', payload)
-      row.id = res.data.id
+      // 新增進度 (POST)
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/progress`, payload, {
+        withCredentials: true
+      });
+      row.id = res.data.id;
     }
     
     // 如果進度為 100，同步更新任務狀態
     if (row.progress_percent === 100) {
-      await axios.patch(`http://localhost:5000/tasks/${row.task_id}`, { status: '已完成', user_id: userId })
+      await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${row.task_id}`, 
+        { 
+          status: '已完成', 
+          user_id: userId 
+        }, 
+        { 
+          withCredentials: true 
+        }
+      );
     }
     
     ElMessage.success('學習進度已成功記錄！')
@@ -215,13 +232,18 @@ const getAiDiagnose = async (row) => {
   }
   
   try {
-    const res = await axios.post('http://localhost:5000/api/review/ai_diagnose', {
-      id: row.id,
-      subject: row.subject,
-      unit: row.unit,
-      note: row.student_note,
-      user_id: userId
-    })
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/review/ai_diagnose`, 
+        {
+          id: row.id,
+          subject: row.subject,
+          unit: row.unit,
+          note: row.student_note,
+          user_id: userId
+        },
+        {
+          withCredentials: true
+        }
+      );
 
     if (res.data.insight) {
       row.insight = res.data.insight
@@ -316,4 +338,5 @@ h2 { font-size: 2.2rem; font-weight: 900; color: #1a1a1a; margin: 0; }
 
 /* 按鈕樣式 */
 .el-button { border-radius: 12px; font-weight: 600; }
+
 </style>
