@@ -65,6 +65,9 @@ const login = async () => {
     ElMessage.success('登入成功')
     router.push('/calendar')  // 導向進度頁
   } catch (err) {
+    console.log("登入失敗err=",err)
+    console.log("user_id=", user_id)
+    console.log("name=", name)
     ElMessage.error('登入失敗，請檢查帳號密碼')
   }
 }
@@ -121,4 +124,5 @@ const login = async () => {
 }
 
 </style>
+
 
