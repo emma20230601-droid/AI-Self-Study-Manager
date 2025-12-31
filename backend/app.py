@@ -19,8 +19,8 @@ db.init_app(app)
 #CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
 #CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
 # 允許你的 Vercel 網址連過來
-#CORS(app, supports_credentials=True, origins=["https://ai-self-study-manager.vercel.app"])
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app, supports_credentials=True, origins=["https://ai-self-study-manager.vercel.app"])
+
 
 # 註冊藍圖
 app.register_blueprint(task_bp)
@@ -37,5 +37,6 @@ def hello():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
