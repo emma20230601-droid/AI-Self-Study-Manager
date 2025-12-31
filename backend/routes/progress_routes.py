@@ -3,7 +3,7 @@ from models import Progress
 from database import db
 from datetime import datetime
 
-
+progress_bp = Blueprint('progress', __name__)
 
 @progress_bp.route('', methods=['POST', 'OPTIONS'])
 def create_progress():
@@ -109,5 +109,6 @@ def update_progress(progress_id):
 
     db.session.commit()
     return jsonify(progress.to_dict())
+
 
 
