@@ -1,7 +1,8 @@
 import os
-from flask import Flask, request, make_response
+from flask import Flask, request, make_response, jsonify
 from flask_cors import CORS
 from database import db
+
 # 匯入藍圖
 from routes.task_routes import task_bp
 from routes.progress_routes import progress_bp
@@ -19,7 +20,7 @@ except ImportError:
 
 app = Flask(__name__)
 
-# --- 資料庫配置 ---
+# --- 1. 資料庫配置 ---
 db_url = os.environ.get('DATABASE_URL')
 if db_url:
     if db_url.startswith("postgres://"):
@@ -33,11 +34,23 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # 初始化資料庫
 db.init_app(app)
 
-# --- CORS 終極設定 ---
-# 1. 基礎設定
+# --- 2. CORS 終極設定 ---
+
+# A. 基礎 Flask-CORS 宣告
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "https://ai-self-study-manager.vercel.app"}})
 
-# 2. 全域攔截器：確保所有回應（包含報錯）都有 CORS 標頭
+# B. 前置攔截：解決 OPTIONS 預檢 (解決 415 錯誤)
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        res = make_response()
+        res.headers.add("Access-Control-Allow-Origin", "https://ai-self-study-manager.vercel.app")
+        res.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+        res.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+        res.headers.add("Access-Control-Allow-Credentials", "true")
+        return res, 200
+
+# C. 後置處理：確保所有回應（包含報錯）都帶有跨域標頭
 @app.after_request
 def add_cors_headers(response):
     response.headers["Access-Control-Allow-Origin"] = "https://ai-self-study-manager.vercel.app"
@@ -46,7 +59,7 @@ def add_cors_headers(response):
     response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
-# --- 自動建立資料庫表 ---
+# --- 3. 自動建立資料庫表 ---
 with app.app_context():
     try:
         db.create_all()
@@ -54,13 +67,13 @@ with app.app_context():
     except Exception as e:
         print(f"Error creating database tables: {e}")
 
-# --- 註冊藍圖 ---
+# --- 4. 註冊藍圖 ---
 app.register_blueprint(task_bp)
-app.register_blueprint(progress_bp)
-app.register_blueprint(auth_bp)
-app.register_blueprint(review_bp)
-app.register_blueprint(teacher_bp)
-app.register_blueprint(config_bp)
+app.register_blueprint(progress_bp, url_prefix='/progress') # 確保這裡的路徑與前端一致
+app.register_blueprint(auth_bp, url_prefix='/auth')
+app.register_blueprint(review_bp, url_prefix='/api/review')
+app.register_blueprint(teacher_bp, url_prefix='/api/teacher')
+app.register_blueprint(config_bp, url_prefix='/config')
 
 @app.route('/')
 def hello():
@@ -69,4 +82,3 @@ def hello():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
