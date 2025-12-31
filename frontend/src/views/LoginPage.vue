@@ -44,11 +44,16 @@ const password = ref('')
 
 const login = async () => {
   try {
-    const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
-      username: username.value,
-      password: password.value
-    })
-  
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/auth/login`, 
+      {
+        username: form.value.username,
+        password: form.value.password
+      },
+      {
+        withCredentials: true // 這一行非常重要，確保 CORS 握手完整
+      }
+    );
     // Login 成功時
     const { user_id, username: name } = res.data
     localStorage.setItem('user_id', user_id)
@@ -116,3 +121,4 @@ const login = async () => {
 }
 
 </style>
+
