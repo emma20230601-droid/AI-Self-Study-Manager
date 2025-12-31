@@ -22,11 +22,11 @@
             placeholder="選擇科目" 
             clearable 
             size="large" 
-            style="width: 140px"
+            style="width: 140px; margin-left: 10px;"
           >
             <el-option v-for="item in subjectOrder" :key="item" :label="item" :value="item" />
           </el-select>
-          <el-button @click="clearFilter" size="large" round>清除篩選</el-button>
+          <el-button @click="clearFilter" size="large" round style="margin-left: 10px;">清除篩選</el-button>
         </div>
       </div>
 
@@ -55,7 +55,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="⏳ 倒數" width="110" align="center">
+        <el-table-column label="⏳ 狀態/倒數" width="110" align="center">
           <template #default="scope">
             <span v-if="scope.row.progress_percent === 100" class="status-done">已完成</span>
             <span v-else :class="{'status-urgent': scope.row.daysLeft < 0}">
@@ -71,7 +71,6 @@
               :step="10"
               show-input
               class="custom-slider"
-              :class="scope.row.progress_percent < 100 ? 'slider-not-finished' : 'slider-finished'"
             />
           </template>
         </el-table-column>
@@ -79,37 +78,23 @@
         <el-table-column label="💯 分數" width="110">
           <template #default="scope">
             <el-input
-              type="textarea"
               v-model="scope.row.score"
               placeholder="必填"
-              autosize
-              class="large-input score-input"
-              :class="{ 'is-empty': !scope.row.score || String(scope.row.score).trim() === '' }"
+              class="score-input"
+              :class="{ 'is-empty': !scope.row.score && row.score !== 0 }"
             />
           </template>
         </el-table-column>
 
         <el-table-column label="💭 學習筆記/錯題心得" min-width="250">
           <template #default="scope">
-            <div class="note-cell">
-              <el-input
-                type="textarea"
-                v-model="scope.row.student_note"
-                placeholder="點擊輸入心得..."
-                autosize
-                class="large-input"
-              />
-              <el-button 
-                type="warning" 
-                size="small" 
-                plain 
-                class="ai-btn"
-                @click="getAiDiagnose(scope.row)"
-              >✨ AI 診斷</el-button>
-            </div>
-            <div v-if="scope.row.insight" class="ai-insight">
-              <strong>🤖 AI 老師建議：</strong> {{ scope.row.insight }}
-            </div>
+            <el-input
+              type="textarea"
+              v-model="scope.row.student_note"
+              placeholder="輸入心得..."
+              autosize
+              class="large-input"
+            />
           </template>
         </el-table-column>
 
@@ -124,12 +109,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
 
-const progressTable = ref(null)
 const selectedMonth = ref(dayjs().format('YYYY-MM'))
 const selectedSubject = ref(null)
 const userId = parseInt(localStorage.getItem('user_id'))
@@ -137,21 +121,21 @@ const progressList = ref([])
 
 const subjectOrder = ['國語', '數學', '英文', '社會', '自然', '理化', '生物', '其它', '藝術', '國中入學考', '小科加課']
 
+// 獲取資料
 const fetchProgress = async () => {
   try {
-    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/tasks`, {
+    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/progress/with_tasks`, {
       params: { user_id: userId },
       withCredentials: true
     });
-    progressList.value = res.data.map(item => {
-      const isCompleted = Number(item.progress_percent) === 100 || item.status === '已完成'
-      return {
-        ...item,
-        progress_percent: isCompleted ? 100 : (item.progress_percent || 0),
-        daysLeft: getDaysLeft(item.target_date, isCompleted),
-      }
-    })
-  } catch (err) { console.error(err) }
+    progressList.value = res.data.map(item => ({
+      ...item,
+      daysLeft: getDaysLeft(item.target_date, item.progress_percent === 100)
+    }))
+  } catch (err) { 
+    console.error('抓取資料失敗:', err)
+    ElMessage.error('無法連線到伺服器')
+  }
 }
 
 const filteredAndSortedList = computed(() => {
@@ -166,92 +150,58 @@ const filteredAndSortedList = computed(() => {
 })
 
 const tableRowClassName = ({ row }) => {
-  return dayjs(row.target_date).format('YYYY-MM-DD') === dayjs().format('YYYY-MM-DD') ? 'row-today' : ''
+  return dayjs(row.target_date).isSame(dayjs(), 'day') ? 'row-today' : ''
 }
 
-// 🚀 核心功能：儲存進度與分數校驗
+// 🚀 儲存功能
 const saveProgress = async (row) => {
-  // 1. 分數必填警告
+  // 分數校驗
   if (row.score === null || row.score === undefined || String(row.score).trim() === '') {
-    ElMessage.warning({
-      message: `請填寫「${row.subject}」的分數後再儲存`,
-      showClose: true,
-      duration: 3000
-    })
-    return // ✋ 攔截儲存
-  }
-
-  try {
-    const payload = { 
-      task_id: row.task_id, 
-      progress_percent: row.progress_percent, 
-      student_note: row.student_note, 
-      score: row.score, 
-      date: dayjs().format('YYYY-MM-DD'), 
-      user_id: userId 
-    }
-    
-    if (row.id) {
-      // 更新現有進度 (PATCH)
-      await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/progress/${row.id}`, payload, {
-        withCredentials: true
-      });
-    } else {
-      // 新增進度 (POST)
-      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/progress`, payload, {
-        withCredentials: true
-      });
-      row.id = res.data.id;
-    }
-    
-    // 如果進度為 100，同步更新任務狀態
-    if (row.progress_percent === 100) {
-      await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${row.task_id}`, 
-        { 
-          status: '已完成', 
-          user_id: userId 
-        }, 
-        { 
-          withCredentials: true 
-        }
-      );
-    }
-    
-    ElMessage.success('學習進度已成功記錄！')
-  } catch (err) { 
-    console.error(err)
-    ElMessage.error('儲存失敗，請檢查網絡連線') 
-  }
-}
-
-// 🚀 AI 診斷功能
-const getAiDiagnose = async (row) => {
-  if (!row.student_note || row.student_note.length < 5) {
-    ElMessage.warning('請先輸入至少 5 個字的學習筆記或錯題心得，AI 才能幫你診斷喔！')
+    ElMessage.warning(`請填寫「${row.subject}」的分數後再儲存`)
     return
+  }
+
+  const payload = { 
+    task_id: row.task_id, 
+    progress_percent: row.progress_percent, 
+    student_note: row.student_note || '', 
+    score: row.score, 
+    date: dayjs().format('YYYY-MM-DD'), 
+    user_id: userId 
   }
   
   try {
-      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/review/ai_diagnose`, 
-        {
-          id: row.id,
-          subject: row.subject,
-          unit: row.unit,
-          note: row.student_note,
-          user_id: userId
-        },
-        {
-          withCredentials: true
+    if (row.id) {
+      try {
+        // 嘗試更新 (PATCH)
+        await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/progress/${row.id}`, payload, { withCredentials: true });
+      } catch (patchErr) {
+        // 如果報 404，代表雲端沒這筆 ID，改走 POST 新增
+        if (patchErr.response?.status === 404) {
+          const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/progress`, payload, { withCredentials: true });
+          row.id = res.data.id;
+        } else {
+          throw patchErr;
         }
-      );
-
-    if (res.data.insight) {
-      row.insight = res.data.insight
-      ElMessage.success('AI 老師診斷完成')
+      }
+    } else {
+      // 直接新增 (POST)
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/progress`, payload, { withCredentials: true });
+      row.id = res.data.id;
     }
-  } catch (error) {
-    console.error("AI 診斷失敗:", error)
-    ElMessage.error(error.response?.data?.error || '召喚 AI 老師失敗')
+    
+    // 如果進度 100%，同步更新 Task 狀態
+    if (row.progress_percent === 100) {
+      await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${row.task_id}`, 
+        { status: '已完成', user_id: userId }, 
+        { withCredentials: true }
+      );
+    }
+    
+    ElMessage.success('儲存成功！')
+  } catch (err) { 
+    console.error('儲存失敗:', err)
+    ElMessage.error('儲存失敗，請確認網路連線') 
   }
 }
 
@@ -259,84 +209,48 @@ const getDaysLeft = (targetDate, isCompleted) => isCompleted ? 0 : dayjs(targetD
 const formatDate = (dateStr) => dayjs(dateStr).format('YYYY-MM-DD')
 const clearFilter = () => { selectedMonth.value = null; selectedSubject.value = null }
 
-onMounted(async () => {
-  await fetchProgress()
-})
+onMounted(fetchProgress)
 </script>
 
 <style scoped>
 .full-page-container {
   padding: 20px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
+  background: #f5f7fa;
   min-height: calc(100vh - 60px);
 }
 
 .main-card-full {
-  border-radius: 24px;
-  border: none;
+  border-radius: 20px;
   height: calc(100vh - 100px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.08);
-  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.05);
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  padding: 10px 10px 20px 10px;
+  margin-bottom: 20px;
 }
-
-h2 { font-size: 2.2rem; font-weight: 900; color: #1a1a1a; margin: 0; }
-.header-hint { font-size: 1.05rem; color: #7f8c8d; margin-top: 5px; }
-
-/* 表格與欄位樣式 */
-:deep(.el-table) { font-size: 1.15rem; border-radius: 16px; overflow: hidden; }
-:deep(.el-table th.el-table__cell) { background-color: #f8f9fb !important; color: #2c3e50; font-weight: 800; height: 65px; }
 
 .subject-tag {
   background: #e6f7ff;
-  padding: 6px 14px;
-  border-radius: 20px;
   color: #1890ff;
-  font-weight: 800;
-  display: inline-block;
-  box-shadow: 0 2px 4px rgba(24, 144, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: bold;
 }
 
-/* 分數必填提示樣式 */
-.score-input.is-empty :deep(.el-textarea__inner) {
-  border: 1px solid #ffbb96 !important;
-  background-color: #fff7e6 !important;
-}
-
-/* 狀態標籤 */
-.status-done { background: #f6ffed; color: #52c41a; padding: 4px 12px; border-radius: 10px; font-weight: bold; }
-.status-urgent { background: #fff1f0; color: #ff4d4f; padding: 4px 12px; border-radius: 10px; font-weight: bold; }
-
-/* 筆記與 AI 區塊 */
-.note-cell { display: flex; gap: 10px; align-items: flex-start; }
-.ai-btn { flex-shrink: 0; border-radius: 12px; }
-.ai-insight {
-  margin-top: 10px;
-  padding: 12px;
-  background-color: #f0f5ff;
-  border-left: 4px solid #409eff;
-  border-radius: 8px;
-  font-size: 1rem;
-  color: #34495e;
-  line-height: 1.5;
-}
+.status-done { color: #52c41a; font-weight: bold; }
+.status-urgent { color: #ff4d4f; font-weight: bold; }
 
 .large-input :deep(.el-textarea__inner) {
-  font-size: 1.1rem;
-  padding: 10px;
-  border-radius: 12px;
+  border-radius: 8px;
+  padding: 8px;
 }
 
-.row-today { background-color: #fffdf0 !important; }
-.row-today td:first-child { border-left: 8px solid #faad14 !important; }
+.score-input.is-empty :deep(.el-input__inner) {
+  border-color: #ffa39e;
+  background-color: #fff1f0;
+}
 
-/* 按鈕樣式 */
-.el-button { border-radius: 12px; font-weight: 600; }
-
+.row-today { background-color: #fffbe6 !important; }
 </style>
