@@ -76,7 +76,7 @@ const handleRegister = async () => {
   loading.value = true;
   try {
     // 發送到後端 auth 路由
-    const response = await axios.post('${import.meta.env.VITE_API_BASE_URL}', {
+    const response = await axios.post('${import.meta.env.VITE_API_BASE_URL}/auth/register', {
       username: form.value.username,
       password: form.value.password
     });
@@ -151,3 +151,4 @@ const handleRegister = async () => {
 }
 
 </style>
+
