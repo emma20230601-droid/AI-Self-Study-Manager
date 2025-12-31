@@ -134,7 +134,10 @@ const getTargetExamDates = async () => {
   // 2. 如果 LocalStorage 沒有，則從 API 抓取
   if (!midterm || !final) {
     try {
-      const res = await axios.get(`http://localhost:5000/api/config/global?user_id=${userId}`)
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/tasks`, {
+        params: { user_id: userId },
+        withCredentials: true
+      });
       if (res.data) {
         midterm = res.data.midterm_date
         final = res.data.final_date
@@ -159,7 +162,10 @@ const loadTasks = async () => {
     // 獲取最新的考期設定
     const { midterm, final } = await getTargetExamDates()
     
-    const res = await axios.get(`http://localhost:5000/progress/with_tasks?user_id=${userId}`)
+    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/progress/with_tasks`, {
+      params: { user_id: userId },
+      withCredentials: true
+    });
     const allTasks = res.data
     const today = dayjs().startOf('day')
 
@@ -247,4 +253,5 @@ h2 { font-size: 2rem; font-weight: 800; color: #1a1a1a; margin: 0; }
 .social { background: #ef6c00; }
 .science { background: #2e7d32; }
 .other-sub { background: #607d8b; }
+
 </style>
