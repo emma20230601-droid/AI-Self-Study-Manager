@@ -76,12 +76,11 @@ const handleRegister = async () => {
   loading.value = true;
   try {
     // 發送到後端 auth 路由
-// 使用 + 號來連結網址，這樣最保險
-    const response = await axios.post(import.meta.env.VITE_API_BASE_URL + '/auth/register', {
+    // 暫時直接寫死 Render 的網址，測試水管通不通
+    const response = await axios.post('https://ai-self-study-manager.onrender.com/auth/register', {
       username: form.value.username,
       password: form.value.password
     });
-
     if (response.status === 201) {
       ElMessage.success('註冊成功！請登入');
       router.push('/login');
@@ -152,6 +151,7 @@ const handleRegister = async () => {
 }
 
 </style>
+
 
 
 
