@@ -276,7 +276,10 @@ const examTitle = computed(() => selectedExam.value === 'midterm' ? '期中' : (
 const handleExamChange = () => { nextTick(() => { renderRadar(); renderTrend(); }) }
 
 onMounted(async () => {
-  const res = await axios.get(`http://localhost:5000/progress/with_tasks?user_id=${userId}`)
+  const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/progress/with_tasks`, {
+    params: { user_id: userId },
+    withCredentials: true
+  });
   progressList.value = res.data
   handleExamChange()
 })
@@ -307,4 +310,5 @@ const customProgressColors = [{ color: '#f56c6c', percentage: 40 }, { color: '#e
 .trend-chart { height: 320px; width: 100%; }
 .unit-scroll-list { max-height: 320px; overflow-y: auto; }
 .unit-item { background: #fff; padding: 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #e2e8f0; }
+
 </style>
