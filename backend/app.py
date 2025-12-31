@@ -20,9 +20,19 @@ db.init_app(app)
 #CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
 # 允許你的 Vercel 網址連過來
 #CORS(app, supports_credentials=True, origins=["https://ai-self-study-manager.vercel.app"])
-CORS(app, 
-     resources={r"/*": {"origins": ["https://ai-self-study-manager.vercel.app"]}},
-     supports_credentials=True)
+# 1. 基礎設定
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
+
+# 2. 強制手動處理 OPTIONS 請求（這是解決 CORS 的絕招）
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "https://ai-self-study-manager.vercel.app")
+        response.headers.add('Access-Control-Allow-Headers', "*")
+        response.headers.add('Access-Control-Allow-Methods', "*")
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
 
 
 # 註冊藍圖
@@ -40,6 +50,7 @@ def hello():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
