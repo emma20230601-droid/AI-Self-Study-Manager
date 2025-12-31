@@ -193,7 +193,10 @@ const typeOrder = ['自修', '評量', '學校課本', '學校作業', '考卷',
 
 const fetchTasks = async () => {
   try {
-    const res = await axios.get(`http://localhost:5000/tasks?user_id=${userId}`)
+    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/tasks`, {
+      params: { user_id: userId },
+      withCredentials: true
+    });
     taskList.value = res.data.sort((a, b) => {
       const aSub = subjectOrder.indexOf(a.subject), bSub = subjectOrder.indexOf(b.subject)
       if (aSub !== bSub) return aSub - bSub
@@ -254,7 +257,9 @@ const openAddDialog = (date) => {
 const addTask = async () => {
   try {
     const payload = { ...newTask.value, user_id: userId, date: dayjs(newTask.value.date).format('YYYY-MM-DD') }
-    const res = await axios.post('http://localhost:5000/tasks', payload)
+    const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/tasks`, payload, {
+      withCredentials: true
+    });
     taskList.value.push(res.data)
     showAddDialog.value = false
     ElMessage.success('已加入月曆')
@@ -271,7 +276,9 @@ const updateTask = async () => {
       user_id: userId,
       date: dayjs(editingTask.value.date).format('YYYY-MM-DD') 
     }
-    const res = await axios.patch(`http://localhost:5000/tasks/${editingTask.value.id}`, payload)
+    const res = await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${editingTask.value.id}`, payload, {
+      withCredentials: true
+    });
     
     // 更新本地列表，讓月曆即時顯示新內容
     const idx = taskList.value.findIndex(t => t.id === editingTask.value.id)
@@ -289,7 +296,10 @@ const updateTask = async () => {
 
 const deleteTask = async (id) => {
   try {
-    await axios.delete(`http://localhost:5000/tasks/${id}`, { params: { user_id: userId } })
+    await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/tasks/${id}`, { 
+      params: { user_id: userId },
+      withCredentials: true 
+    });
     taskList.value = taskList.value.filter(t => t.id !== id)
     showEditDialog.value = false
     ElMessage.success('已移除任務')
@@ -435,4 +445,5 @@ h2 { font-weight: 800; color: #2c3e50; }
 /* 列印與按鈕圓角 */
 .el-button { border-radius: 10px; }
 .current-month-display { border-radius: 10px !important; }
+
 </style>
