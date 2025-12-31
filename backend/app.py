@@ -75,6 +75,13 @@ app.register_blueprint(review_bp, url_prefix='/api/review')
 app.register_blueprint(teacher_bp, url_prefix='/api/teacher')
 app.register_blueprint(config_bp, url_prefix='/config')
 
+# 加入這段在 app.register_blueprint 之後
+with app.app_context():
+    print("--- 目前系統開啟的路由清單 ---")
+    for rule in app.url_map.iter_rules():
+        print(f"路徑: {rule.rule} | 方法: {rule.methods}")
+    print("----------------------------")
+    
 @app.route('/')
 def hello():
     return 'Flask Self-Study Backend OK!'
@@ -82,3 +89,4 @@ def hello():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
