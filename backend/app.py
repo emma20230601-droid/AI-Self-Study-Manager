@@ -45,11 +45,11 @@ CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 def handle_preflight():
     if request.method == "OPTIONS":
         response = make_response()
-        # 這裡建議換成你實際的 Vercel 網址以增加安全性，目前先用 *
         response.headers.add("Access-Control-Allow-Origin", "https://ai-self-study-manager.vercel.app")
-        response.headers.add('Access-Control-Allow-Headers', "*")
-        response.headers.add('Access-Control-Allow-Methods', "*")
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        # 修正重點：這裡要明確列出 Content-Type
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+        response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        response.headers.add("Access-Control-Allow-Credentials", "true")
         return response
 
 # --- 自動建立資料庫表 ---
@@ -76,3 +76,4 @@ if __name__ == '__main__':
     # Render 會自動設定 PORT 環境變數，本地則預設 5000
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
