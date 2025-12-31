@@ -32,7 +32,7 @@ def create_progress():
     db.session.commit()
     return jsonify(new_progress.to_dict()), 201
 
-@progress_bp.route('/with_tasks', methods=['GET'])
+@progress_bp.route('/with_tasks', methods=['GET', 'OPTIONS'])
 def get_progress_with_tasks():
     user_id = request.args.get('user_id', type=int)
     if not user_id:
@@ -62,7 +62,7 @@ def get_progress_with_tasks():
     return jsonify(results)
 
 
-@progress_bp.route('/<int:progress_id>', methods=['PATCH'])
+@progress_bp.route('/<int:progress_id>', methods=['PATCH', 'OPTIONS'])
 def update_progress(progress_id):
     data = request.get_json()
     user_id = data.get('user_id')
@@ -105,3 +105,4 @@ def update_progress(progress_id):
 
     db.session.commit()
     return jsonify(progress.to_dict())
+
