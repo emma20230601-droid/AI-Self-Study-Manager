@@ -152,6 +152,8 @@ import { Edit, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import dayjs from 'dayjs'
 
+// 1. 定義 API 基礎網址
+const API_BASE = import.meta.env.VITE_API_BASE_URL
 const userId = parseInt(localStorage.getItem('user_id'))
 
 // 篩選控制
@@ -169,26 +171,94 @@ const subjectOrder = ['國語', '數學', '英文', '社會', '自然', '生物'
 const subjectOrderFull = [...subjectOrder, '藝術', '其它']
 const typeOrder = ['自修', '評量', '學校課本', '學校作業', '考卷', '小科', '加深加廣', '戶外活動', '考試', '報名']
 
+// --- API 函式區 ---
+
 const fetchTasks = async () => {
+  if (!userId) return
   try {
-    const res = await axios.get(`http://localhost:5000/tasks?user_id=${userId}`)
+    // 修正路徑：localhost -> API_BASE
+    const res = await axios.get(`${API_BASE}/tasks`, {
+      params: { user_id: userId }
+    })
     taskList.value = res.data
     sortTasks()
   } catch (err) {
-    ElMessage.error('載入失敗，請檢查網路連接')
+    console.error('載入失敗:', err)
+    ElMessage.error('任務載入失敗，請檢查後端狀態')
   }
 }
 
-const handleFilterChange = () => {
-  // 日期區間變動時可額外處理邏輯，目前由 computed 自動處理
+const addTask = async () => {
+  if (!taskForm.value.unit || !taskForm.value.title) return ElMessage.warning('請輸入單元與內容')
+  try {
+    const payload = { 
+      ...taskForm.value, 
+      user_id: userId, 
+      date: dayjs(taskForm.value.date).format('YYYY-MM-DD'), 
+      status: '未開始' 
+    }
+    // 修正路徑
+    const res = await axios.post(`${API_BASE}/tasks`, payload)
+    taskList.value.unshift(res.data)
+    taskForm.value = { subject: '國語', type: '自修', unit: '', title: '', date: new Date() }
+    ElMessage.success('任務已新增')
+  } catch (err) { 
+    ElMessage.error('新增失敗') 
+  }
 }
+
+const updateStatus = async (task) => {
+  try {
+    // 修正路徑
+    await axios.patch(`${API_BASE}/tasks/${task.id}`, { 
+      status: task.status, 
+      user_id: userId 
+    })
+    ElMessage.success(`進度更新：${task.status}`)
+  } catch (err) { 
+    ElMessage.error('更新失敗') 
+  }
+}
+
+const updateTask = async () => {
+  try {
+    // 修正路徑
+    const res = await axios.patch(`${API_BASE}/tasks/${editingTask.value.id}`, { 
+      ...editingTask.value, 
+      user_id: userId 
+    })
+    const idx = taskList.value.findIndex(t => t.id === editingTask.value.id)
+    if (idx !== -1) taskList.value[idx] = res.data
+    showEditDialog.value = false
+    ElMessage.success('修改已儲存')
+  } catch (err) { 
+    ElMessage.error('儲存失敗') 
+  }
+}
+
+const deleteTask = async (id) => {
+  try {
+    await ElMessageBox.confirm('確定要永久刪除此任務嗎？', '提醒', {
+      confirmButtonText: '確定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    // 修正路徑
+    await axios.delete(`${API_BASE}/tasks/${id}`, { 
+      params: { user_id: userId } 
+    })
+    taskList.value = taskList.value.filter(t => t.id !== id)
+    ElMessage.success('已刪除任務')
+  } catch (err) {
+    // 使用者取消刪除不噴錯
+  }
+}
+
+// --- 輔助函式區 ---
 
 const filteredTasks = computed(() => {
   return taskList.value.filter(task => {
-    // 科目篩選邏輯
     const matchSubject = !selectedSubject.value || task.subject === selectedSubject.value
-    
-    // 日期區間篩選邏輯
     let matchDate = true
     if (dateRange.value && dateRange.value.length === 2) {
       const start = dayjs(dateRange.value[0]).startOf('day')
@@ -205,61 +275,9 @@ const sortTasks = () => {
   taskList.value.sort((a, b) => new Date(b.date) - new Date(a.date))
 }
 
-const addTask = async () => {
-  if (!taskForm.value.unit || !taskForm.value.title) return ElMessage.warning('請輸入單元與內容')
-  try {
-    const payload = { 
-      ...taskForm.value, 
-      user_id: userId, 
-      date: dayjs(taskForm.value.date).format('YYYY-MM-DD'), 
-      status: '未開始' 
-    }
-    const res = await axios.post('http://localhost:5000/tasks', payload)
-    taskList.value.unshift(res.data)
-    taskForm.value = { subject: '國語', type: '自修', unit: '', title: '', date: new Date() }
-    ElMessage.success('任務已新增')
-  } catch (err) { ElMessage.error('新增失敗') }
-}
-
-const updateStatus = async (task) => {
-  try {
-    await axios.patch(`http://localhost:5000/tasks/${task.id}`, { 
-      status: task.status, 
-      user_id: userId 
-    })
-    ElMessage.success(`進度更新：${task.status}`)
-  } catch (err) { ElMessage.error('更新失敗') }
-}
-
 const openEditDialog = (row) => { 
   editingTask.value = { ...row }
   showEditDialog.value = true 
-}
-
-const updateTask = async () => {
-  try {
-    const res = await axios.patch(`http://localhost:5000/tasks/${editingTask.value.id}`, { 
-      ...editingTask.value, 
-      user_id: userId 
-    })
-    const idx = taskList.value.findIndex(t => t.id === editingTask.value.id)
-    if (idx !== -1) taskList.value[idx] = res.data
-    showEditDialog.value = false
-    ElMessage.success('修改已儲存')
-  } catch (err) { ElMessage.error('儲存失敗') }
-}
-
-const deleteTask = async (id) => {
-  try {
-    await ElMessageBox.confirm('確定要永久刪除此任務嗎？', '提醒', {
-      confirmButtonText: '確定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await axios.delete(`http://localhost:5000/tasks/${id}`, { params: { user_id: userId } })
-    taskList.value = taskList.value.filter(t => t.id !== id)
-    ElMessage.success('已刪除任務')
-  } catch (err) {}
 }
 
 const getSubjectColorClass = (s) => {
@@ -268,6 +286,7 @@ const getSubjectColorClass = (s) => {
 }
 
 const formatDate = (d) => d ? dayjs(d).format('YYYY-MM-DD') : '--'
+
 onMounted(fetchTasks)
 </script>
 
@@ -325,4 +344,5 @@ onMounted(fetchTasks)
 :deep(.el-table__inner-wrapper::before) {
   display: none;
 }
+
 </style>
