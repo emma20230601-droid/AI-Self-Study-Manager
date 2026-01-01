@@ -76,15 +76,29 @@ app.register_blueprint(teacher_bp, url_prefix='/api/teacher') # 修正重複路�
 app.register_blueprint(config_bp, url_prefix='/api/config')
 
 # 加入這段在 app.register_blueprint 之後
+# backend/app.py
+
 with app.app_context():
-    # 確保所有 Model 都被匯入
-    from database import SubjectConfig, AISetting
-    # 如果你有獨立的 Task/Progress Model 檔案，也要 import 他們
+    db.create_all()  # 正常建立
     
-    print("🧹 清理舊表並建立新表...")
-    db.drop_all() 
-    db.create_all()
-    print("✅ 資料庫結構已更新 (包含 ai_insight 欄位)")
+    # 💡 強制檢查並補齊缺失欄位的特殊邏輯
+    try:
+        from sqlalchemy import text
+        # 1. 檢查並補齊 is_corrected
+        db.session.execute(text("ALTER TABLE progresses ADD COLUMN IF NOT EXISTS is_corrected BOOLEAN DEFAULT FALSE;"))
+        # 2. 檢查並補齊 ai_insight
+        db.session.execute(text("ALTER TABLE progresses ADD COLUMN IF NOT EXISTS ai_insight TEXT;"))
+        # 3. 檢查並補齊可能遺失的 progress_percent (如果你的 model 有這欄)
+        db.session.execute(text("ALTER TABLE progresses ADD COLUMN IF NOT EXISTS progress_percent INTEGER DEFAULT 0;"))
+        
+        db.session.commit()
+        print("✅ 資料庫欄位補齊檢查完成！")
+    except Exception as e:
+        db.session.rollback()
+        print(f"⚠️ 欄位補齊失敗 (可能已存在): {e}")
+
+    # ⛔ 務必註解掉這行，不要再刪除資料了
+    # db.drop_all()
     
 @app.route('/')
 def hello():
@@ -93,6 +107,7 @@ def hello():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
