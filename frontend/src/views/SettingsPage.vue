@@ -139,18 +139,27 @@ const loadSettings = async () => {
   if (!userId) return
   try {
     // 1. 載入版本與科目
-    const resPub = await axios.get(`http://localhost:5000/api/config/publishers?user_id=${userId}`)
+    const resPub = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/config/publishers`, {
+      params: { user_id: userId },
+      withCredentials: true // 💡 雲端通訊必加，確保 Cookie/Session 正常
+    });
     if (resPub.data && resPub.data.length > 0) localConfigs.value = resPub.data
 
     // 2. 載入全域考期
-    const resGlobal = await axios.get(`http://localhost:5000/api/config/global?user_id=${userId}`)
+    const resGlobal = await axios.get(`${API_BASE}/api/config/global`, { 
+      params: { user_id: userId },
+      withCredentials: true 
+    });
     if (resGlobal.data) {
       globalDates.value.midterm_date = resGlobal.data.midterm_date || ''
       globalDates.value.final_date = resGlobal.data.final_date || ''
     }
 
     // 3. 載入 AI 配置
-    const resAI = await axios.get(`http://localhost:5000/api/config/ai?user_id=${userId}`)
+    const resAI = await axios.get(`${API_BASE}/api/config/ai`, { 
+      params: { user_id: userId },
+      withCredentials: true 
+    });
     if (resAI.data && resAI.data.api_key) {
       aiConfig.value = { ...aiConfig.value, ...resAI.data }
     }
@@ -168,26 +177,32 @@ const saveAllSettings = async () => {
   
   saving.value = true
   try {
-    // A. 儲存各科版本
-    await axios.post('http://localhost:5000/api/config/publishers', {
-      user_id: userId,
-      configs: localConfigs.value
-    })
-
-    // B. 儲存全域考期
-    const currentGrade = localConfigs.value[0]?.grade || 6
-    await axios.post('http://localhost:5000/api/config/global', {
-      user_id: userId,
-      grade: currentGrade,
-      midterm_date: globalDates.value.midterm_date,
-      final_date: globalDates.value.final_date
-    })
-
-    // C. 儲存 AI 配置
-    await axios.post('http://localhost:5000/api/config/ai', {
-      user_id: userId,
-      ...aiConfig.value
-    })
+      // A. 儲存各科版本
+      await axios.post(`${API_BASE}/api/config/publishers`, {
+        user_id: userId,
+        configs: localConfigs.value
+      }, { withCredentials: true });
+    
+      // B. 儲存全域考期
+      const currentGrade = localConfigs.value[0]?.grade || 6;
+      await axios.post(`${API_BASE}/api/config/global`, {
+        user_id: userId,
+        grade: currentGrade,
+        midterm_date: globalDates.value.midterm_date,
+        final_date: globalDates.value.final_date
+      }, { withCredentials: true });
+    
+      // C. 儲存 AI 配置
+      await axios.post(`${API_BASE}/api/config/ai`, {
+        user_id: userId,
+        ...aiConfig.value
+      }, { withCredentials: true });
+    
+      ElMessage.success('配置已儲存');
+    } catch (error) {
+      console.error('儲存失敗:', error);
+      ElMessage.error('儲-存失敗，請檢查網路連線');
+    }
 
     // 同步到 LocalStorage 供前端其他頁面即時使用
     localStorage.setItem('midterm_date', globalDates.value.midterm_date || '')
@@ -244,4 +259,5 @@ onMounted(loadSettings)
 .input-hint { margin-top: 8px; font-size: 0.9rem; color: #909399; display: flex; align-items: center; }
 .input-hint::before { content: '💡'; margin-right: 5px; }
 .footer-hint { margin: 30px 0; font-size: 1.1rem; color: #a8abb2; text-align: center; font-style: italic; }
+
 </style>
