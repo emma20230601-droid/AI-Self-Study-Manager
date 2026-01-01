@@ -13,6 +13,7 @@ class Progress(db.Model):
     teacher_feedback = db.Column(db.Text)
     score = db.Column(db.Float)
     is_corrected = db.Column(db.Boolean, default=False)
+    ai_insight = db.Column(db.Text)
 
     def to_dict(self):
         return {
@@ -25,4 +26,5 @@ class Progress(db.Model):
             'teacher_feedback': self.teacher_feedback,
             'score': self.score
         }
+
 
