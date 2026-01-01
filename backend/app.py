@@ -81,6 +81,9 @@ with app.app_context():
     for rule in app.url_map.iter_rules():
         print(f"路徑: {rule.rule} | 方法: {rule.methods}")
     print("----------------------------")
+    db.drop_all()  # 💡 取消這行的註解並部署，表就會重新建立並補齊欄位
+    db.create_all()
+    print("Database synced!")
     
 @app.route('/')
 def hello():
@@ -89,6 +92,7 @@ def hello():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
