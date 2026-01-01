@@ -72,8 +72,8 @@ app.register_blueprint(task_bp)
 app.register_blueprint(progress_bp, url_prefix='/progress') # 確保這裡的路徑與前端一致
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(review_bp, url_prefix='/api/review')
-app.register_blueprint(teacher_bp, url_prefix='/teacher')
-app.register_blueprint(config_bp, url_prefix='/config')
+app.register_blueprint(teacher_bp, url_prefix='/api/teacher') # 修正重複路徑
+app.register_blueprint(config_bp, url_prefix='/api/config')
 
 # 加入這段在 app.register_blueprint 之後
 with app.app_context():
@@ -89,6 +89,7 @@ def hello():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
