@@ -77,13 +77,14 @@ app.register_blueprint(config_bp, url_prefix='/api/config')
 
 # 加入這段在 app.register_blueprint 之後
 with app.app_context():
-    print("--- 目前系統開啟的路由清單 ---")
-    for rule in app.url_map.iter_rules():
-        print(f"路徑: {rule.rule} | 方法: {rule.methods}")
-    print("----------------------------")
-    db.drop_all()  # 💡 取消這行的註解並部署，表就會重新建立並補齊欄位
+    # 確保所有 Model 都被匯入
+    from database import SubjectConfig, AISetting
+    # 如果你有獨立的 Task/Progress Model 檔案，也要 import 他們
+    
+    print("🧹 清理舊表並建立新表...")
+    db.drop_all() 
     db.create_all()
-    print("Database synced!")
+    print("✅ 資料庫結構已更新 (包含 ai_insight 欄位)")
     
 @app.route('/')
 def hello():
@@ -92,6 +93,7 @@ def hello():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
