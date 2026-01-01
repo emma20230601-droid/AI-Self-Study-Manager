@@ -82,7 +82,7 @@ with app.app_context():
     # 如果你有獨立的 Task/Progress Model 檔案，也要 import 他們
     
     print("🧹 清理舊表並建立新表...")
-    #db.drop_all() 
+    db.drop_all() 
     db.create_all()
     print("✅ 資料庫結構已更新 (包含 ai_insight 欄位)")
     
@@ -93,6 +93,7 @@ def hello():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
