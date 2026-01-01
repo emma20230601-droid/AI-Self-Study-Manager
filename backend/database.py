@@ -5,7 +5,7 @@ from datetime import datetime
 db = SQLAlchemy()
 
 # ✅ 新增：定義資料表結構，這會讓 db.create_all() 知道要建立 subject_configs
-class SubjectConfig(db.Model):
+class get_subject_config(db.Model):
     __tablename__ = 'subject_configs'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, nullable=False)
@@ -84,3 +84,4 @@ def get_user_ai_config(user_id):
     except Exception as e:
         print(f"讀取 AI 設定出錯: {e}")
         return None
+
