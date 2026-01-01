@@ -63,23 +63,39 @@ def get_exam_dates(user_id):
         print(f"查詢考期出錯: {e}")
         return {"midterm_date": None, "final_date": None}
 
+# database.py
+
 def update_all_subject_configs(user_id, grade, midterm_date, final_date):
     try:
-        sql = text("""
-            UPDATE subject_configs 
-            SET grade = :grade, midterm_date = :md, final_date = :fd 
-            WHERE user_id = :uid
-        """)
-        db.session.execute(sql, {'uid': user_id, 'grade': grade, 'md': midterm_date, 'fd': final_date})
+        # 1. 檢查該用戶是否已經有任何學科設定
+        check_sql = text("SELECT id FROM subject_configs WHERE user_id = :uid LIMIT 1")
+        exists = db.session.execute(check_sql, {'uid': user_id}).fetchone()
+
+        if exists:
+            # 2. 如果存在，執行更新
+            sql = text("""
+                UPDATE subject_configs 
+                SET grade = :grade, midterm_date = :md, final_date = :fd 
+                WHERE user_id = :uid
+            """)
+            db.session.execute(sql, {'uid': user_id, 'grade': grade, 'md': midterm_date, 'fd': final_date})
+        else:
+            # 3. 如果不存在（新用戶），為預設的五個科目建立初始設定
+            subjects = ['國語', '數學', '社會', '自然', '英文']
+            for sub in subjects:
+                insert_sql = text("""
+                    INSERT INTO subject_configs (user_id, subject_name, grade, midterm_date, final_date, publisher)
+                    VALUES (:uid, :sub, :grade, :md, :fd, '康軒')
+                """)
+                db.session.execute(insert_sql, {
+                    'uid': user_id, 'sub': sub, 'grade': grade, 
+                    'md': midterm_date, 'fd': final_date
+                })
+        
         db.session.commit()
         return True
     except Exception as e:
         db.session.rollback()
+        print(f"更新全域設定出錯: {e}")
         return False
 
-def get_user_ai_config(user_id):
-    try:
-        sql = text("SELECT * FROM ai_settings WHERE user_id = :uid")
-        return db.session.execute(sql, {'uid': user_id}).fetchone()
-    except Exception as e:
-        return None
