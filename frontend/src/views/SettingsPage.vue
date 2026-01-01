@@ -114,7 +114,8 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { Check } from '@element-plus/icons-vue'
 
-// 從 localStorage 取得 user_id，請確保登入時有存入
+// 1. 定義基礎網址與讀取使用者 ID
+const API_BASE = import.meta.env.VITE_API_BASE_URL
 const userId = localStorage.getItem('user_id')
 const saving = ref(false)
 
@@ -138,12 +139,16 @@ const aiConfig = ref({
 const loadSettings = async () => {
   if (!userId) return
   try {
+    // 💡 所有的網址都統一使用 ${API_BASE}
+    
     // 1. 載入版本與科目
-    const resPub = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/config/publishers`, {
+    const resPub = await axios.get(`${API_BASE}/api/config/publishers`, {
       params: { user_id: userId },
-      withCredentials: true // 💡 雲端通訊必加，確保 Cookie/Session 正常
+      withCredentials: true 
     });
-    if (resPub.data && resPub.data.length > 0) localConfigs.value = resPub.data
+    if (resPub.data && resPub.data.length > 0) {
+      localConfigs.value = resPub.data
+    }
 
     // 2. 載入全域考期
     const resGlobal = await axios.get(`${API_BASE}/api/config/global`, { 
@@ -165,7 +170,7 @@ const loadSettings = async () => {
     }
   } catch (err) {
     console.error("載入失敗:", err)
-    // 注意：如果後端沒開，這裡會報 Network Error
+    ElMessage.error('無法從伺服器載入設定')
   }
 }
 
@@ -177,42 +182,36 @@ const saveAllSettings = async () => {
   
   saving.value = true
   try {
-      // A. 儲存各科版本
-      await axios.post(`${API_BASE}/api/config/publishers`, {
-        user_id: userId,
-        configs: localConfigs.value
-      }, { withCredentials: true });
-    
-      // B. 儲存全域考期
-      const currentGrade = localConfigs.value[0]?.grade || 6;
-      await axios.post(`${API_BASE}/api/config/global`, {
-        user_id: userId,
-        grade: currentGrade,
-        midterm_date: globalDates.value.midterm_date,
-        final_date: globalDates.value.final_date
-      }, { withCredentials: true });
-    
-      // C. 儲存 AI 配置
-      await axios.post(`${API_BASE}/api/config/ai`, {
-        user_id: userId,
-        ...aiConfig.value
-      }, { withCredentials: true });
-    
-      ElMessage.success('配置已儲存');
-    } catch (error) {
-      console.error('儲存失敗:', error);
-      ElMessage.error('儲-存失敗，請檢查網路連線');
-    }
+    // A. 儲存各科版本
+    await axios.post(`${API_BASE}/api/config/publishers`, {
+      user_id: userId,
+      configs: localConfigs.value
+    }, { withCredentials: true });
 
-    // 同步到 LocalStorage 供前端其他頁面即時使用
+    // B. 儲存全域考期
+    const currentGrade = localConfigs.value[0]?.grade || 6;
+    await axios.post(`${API_BASE}/api/config/global`, {
+      user_id: userId,
+      grade: currentGrade,
+      midterm_date: globalDates.value.midterm_date,
+      final_date: globalDates.value.final_date
+    }, { withCredentials: true });
+
+    // C. 儲存 AI 配置
+    await axios.post(`${API_BASE}/api/config/ai`, {
+      user_id: userId,
+      ...aiConfig.value
+    }, { withCredentials: true });
+
+    // ✅ 同步到 LocalStorage，讓其他頁面不用重新整理也能拿到最新日期
     localStorage.setItem('midterm_date', globalDates.value.midterm_date || '')
     localStorage.setItem('final_date', globalDates.value.final_date || '')
     localStorage.setItem('user_grade', currentGrade)
 
-    ElMessage.success('所有設定與 AI 配置已成功同步')
+    ElMessage.success('所有設定與 AI 配置已成功同步到雲端');
   } catch (err) {
     console.error("儲存失敗:", err)
-    ElMessage.error('儲存失敗，請檢查後端連線')
+    ElMessage.error('儲存失敗，請檢查網路或後端狀態')
   } finally {
     saving.value = false
   }
@@ -261,3 +260,4 @@ onMounted(loadSettings)
 .footer-hint { margin: 30px 0; font-size: 1.1rem; color: #a8abb2; text-align: center; font-style: italic; }
 
 </style>
+
