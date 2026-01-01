@@ -31,7 +31,7 @@ def parse_note_content(subject, note, db_insight=None):
     return pages, tags, clean_note, insight
 
 
-@review_bp.route('/api/review/list', methods=['GET'])
+@review_bp.route('/list', methods=['GET'])
 def get_review_list():
     subject = request.args.get('subject', '') 
     user_id = request.args.get('user_id')
@@ -81,7 +81,7 @@ def get_review_list():
         print(f"Database error: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
 
-@review_bp.route('/api/review/ai_diagnose', methods=['POST'])
+@review_bp.route('/ai_diagnose', methods=['POST'])
 def ai_diagnose():
     try:
         data = request.json or {}
@@ -128,7 +128,7 @@ def ai_diagnose():
         traceback.print_exc()
         return jsonify({"error": "系統處理失敗，請稍後再試"}), 500
     
-@review_bp.route('/api/review/toggle', methods=['POST'])
+@review_bp.route('/toggle', methods=['POST'])
 def toggle_review_status():
     try:
         data = request.json
@@ -152,4 +152,5 @@ def toggle_review_status():
     except Exception as e:
         db.session.rollback()
         print(f"❌ 更新狀態失敗: {e}")
+
         return jsonify({"error": "更新失敗"}), 500
