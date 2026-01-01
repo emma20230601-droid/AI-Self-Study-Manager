@@ -8,7 +8,7 @@ from ai_service import ask_ai
 teacher_bp = Blueprint('teacher', __name__)
 
 # --- 路由 1：教師診斷分析看板數據 (不涉及 AI，保持原樣但優化效能) ---
-@teacher_bp.route('/api/teacher/analysis', methods=['GET'])
+@teacher_bp.route('/analysis', methods=['GET'])
 def get_teacher_analysis():
     try:
         subject = request.args.get('subject', '')
@@ -69,7 +69,7 @@ def get_teacher_analysis():
         return jsonify({"error": str(e)}), 500
 
 # --- 路由 2：一鍵生成補救考卷 (🚀 去 Key 化版本) ---
-@teacher_bp.route('/api/teacher/generate_quiz', methods=['POST'])
+@teacher_bp.route('/generate_quiz', methods=['POST'])
 def generate_quiz():
     try:
         data = request.json
@@ -125,4 +125,5 @@ def generate_quiz():
 
     except Exception as e:
         traceback.print_exc()
+
         return jsonify({"error": f"系統錯誤: {str(e)}"}), 500
