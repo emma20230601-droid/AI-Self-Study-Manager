@@ -142,7 +142,12 @@ const fetchData = async () => {
       withCredentials: true // 💡 雲端通訊一定要加這個
     });
     // 將後端的 ai_insight 映射到前端使用的 insight 欄位
-    records.value = res.data.map(item => ({ ...item, isAnalyzing: false }));
+    records.value = res.data.map(item => ({ 
+      ...item, 
+      isAnalyzing: false,
+      clean_note: item.clean_note || item.student_note || "無筆記", // 增加相容性
+      insight: item.insight || item.ai_insight || "" 
+    }));
   } catch (error) {
     console.error("讀取失敗:", error);
     ElMessage.error("讀取資料失敗");
@@ -286,4 +291,5 @@ onMounted(fetchData);
 
 
 </style>
+
 
