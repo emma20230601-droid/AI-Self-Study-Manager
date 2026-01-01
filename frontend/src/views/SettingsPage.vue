@@ -54,7 +54,7 @@
           <el-col :span="8">
             <el-form-item label="模型名稱">
               <el-select v-model="aiConfig.model_name" style="width: 100%">
-                <el-option label="Gemini 1.5 Flash (推薦)" value="gemini-1.5-flash" />
+                <el-option label="Gemini 2.5 Flash (推薦)" value="gemini-2.5-flash" />
                 <el-option label="Gemini 1.5 Pro" value="gemini-1.5-pro" />
                 <el-option label="Gemini 2.0 Flash (實驗)" value="gemini-2.0-flash-exp" />
               </el-select>
@@ -132,7 +132,7 @@ const globalDates = ref({ midterm_date: '', final_date: '' })
 const aiConfig = ref({
   api_key: '',
   system_prompt: '',
-  model_name: 'gemini-1.5-flash',
+  model_name: 'gemini-2.5-flash',
   base_url: 'https://generativelanguage.googleapis.com/v1beta'
 })
 
@@ -260,4 +260,5 @@ onMounted(loadSettings)
 .footer-hint { margin: 30px 0; font-size: 1.1rem; color: #a8abb2; text-align: center; font-style: italic; }
 
 </style>
+
 
