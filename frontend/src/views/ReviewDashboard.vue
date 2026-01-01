@@ -132,15 +132,14 @@ const userId = parseInt(localStorage.getItem('user_id'));
 const fetchData = async () => {
   loading.value = true;
   try {
-        const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/review/list`, {
-          params: { 
-            subject: currentSubject.value, 
-            user_id: userId,
-            start: filters.start, 
-            end: filters.end 
-          },
-          withCredentials: true // 💡 雲端環境必須加上這行，否則 Cookie 或 Session 會失效
-        });
+    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/review/list`, {
+      params: { 
+        subject: currentSubject.value, 
+        user_id: userId,
+        start: filters.start, 
+        end: filters.end 
+      },
+      withCredentials: true // 💡 雲端通訊一定要加這個
     });
     // 將後端的 ai_insight 映射到前端使用的 insight 欄位
     records.value = res.data.map(item => ({ ...item, isAnalyzing: false }));
@@ -287,3 +286,4 @@ onMounted(fetchData);
 
 
 </style>
+
