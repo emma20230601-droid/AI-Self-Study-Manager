@@ -132,13 +132,15 @@ const userId = parseInt(localStorage.getItem('user_id'));
 const fetchData = async () => {
   loading.value = true;
   try {
-    const res = await axios.get('http://localhost:5000/api/review/list', {
-      params: { 
-        subject: currentSubject.value, 
-        user_id: userId,
-        start: filters.start, 
-        end: filters.end 
-      }
+        const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/review/list`, {
+          params: { 
+            subject: currentSubject.value, 
+            user_id: userId,
+            start: filters.start, 
+            end: filters.end 
+          },
+          withCredentials: true // 💡 雲端環境必須加上這行，否則 Cookie 或 Session 會失效
+        });
     });
     // 將後端的 ai_insight 映射到前端使用的 insight 欄位
     records.value = res.data.map(item => ({ ...item, isAnalyzing: false }));
@@ -154,12 +156,14 @@ const getAiDiagnose = async (row) => {
   if (row.isAnalyzing) return;
   row.isAnalyzing = true; 
   try {
-    const res = await axios.post('http://localhost:5000/api/review/ai_diagnose', {
+    const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/review/ai_diagnose`, {
       id: row.id, 
       subject: row.subject, 
       unit: row.unit, 
       note: row.clean_note, 
       user_id: userId
+    }, {
+      withCredentials: true // 💡 必須加上，否則會被跨域攔截
     });
     if (res.data.insight) {
       row.insight = res.data.insight;
@@ -180,9 +184,12 @@ const selectSubject = (name) => {
 const toggleStatus = async (item) => {
   item.is_corrected = !item.is_corrected;
   try {
-    await axios.post('http://localhost:5000/api/review/toggle', { 
+    const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/review/toggle`, { 
       id: item.id, 
-      is_corrected: item.is_corrected 
+      is_corrected: item.is_corrected,
+      user_id: userId // 建議加上，方便後端驗證權限
+    }, {
+      withCredentials: true // 跨域憑證
     });
   } catch (e) {
     ElMessage.error("更新失敗");
@@ -277,5 +284,6 @@ onMounted(fetchData);
 .check-box { width: 30px; height: 30px; border: 2px solid #dee2e6; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .check-box.checked { background: #40c057; border-color: #40c057; color: white; }
 .refresh-btn { margin-left: auto; color: #adb5bd !important; }
+
 
 </style>
