@@ -98,6 +98,9 @@ import { ref, reactive, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
 import { ElMessage } from 'element-plus';
 
+// 💡 取得環境變數中的後端網址
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
 const currentSubject = ref('社會');
 const userId = parseInt(localStorage.getItem('user_id'));
 const quizResult = ref('');
@@ -119,15 +122,17 @@ const analysis = ref({
   concept_map: {}
 });
 
-// 💡 計算屬性：從 unit_stats 中過濾出分數較低的單元 (例如低於 90 分)
+// 計算弱點單元
 const weakUnits = computed(() => {
   return (analysis.value.unit_stats || [])
     .filter(item => item.avg < 90)
-    .sort((a, b) => a.avg - b.avg); // 分數最低的排在前面
+    .sort((a, b) => a.avg - b.avg);
 });
 
-watch(currentSubject, () => {
+// 當學科或日期改變時，重新抓取數據
+watch([currentSubject, () => filters.start, () => filters.end], () => {
   quizResult.value = ''; 
+  fetchAnalysis();
 });
 
 const fetchAnalysis = async () => {
@@ -136,27 +141,34 @@ const fetchAnalysis = async () => {
     return;
   }
   try {
-    const res = await axios.get('http://localhost:5000/api/teacher/analysis', {
+    // 🚀 修改點：使用 API_BASE 並加上 withCredentials
+    const res = await axios.get(`${API_BASE}/api/teacher/analysis`, {
       params: { 
         subject: currentSubject.value, 
         start: filters.start, 
         end: filters.end,
         user_id: userId
-      }
+      },
+      withCredentials: true
     });
     analysis.value = res.data;
   } catch (err) {
     console.error("看板數據讀取失敗:", err);
+    // ElMessage.error("讀取看板數據失敗");
   }
 };
 
 const generateAIQuiz = async () => {
+  if (generating.value) return;
   generating.value = true;
   quizResult.value = ""; 
   try {
-    const res = await axios.post('http://localhost:5000/api/teacher/generate_quiz', {
+    // 🚀 修改點：使用 API_BASE 並加上 withCredentials
+    const res = await axios.post(`${API_BASE}/api/teacher/generate_quiz`, {
       subject: currentSubject.value,
       user_id: userId 
+    }, {
+      withCredentials: true
     });
     
     if (res.data.quiz_content) {
@@ -166,7 +178,8 @@ const generateAIQuiz = async () => {
       ElMessage.warning(res.data.error || "無法生成考卷");
     }
   } catch (err) {
-    ElMessage.error("生成失敗，請檢查後端連線。");
+    console.error("AI 生成失敗:", err);
+    ElMessage.error("生成失敗，請檢查後端 AI 模組設定。");
   } finally {
     generating.value = false;
   }
@@ -244,6 +257,7 @@ td { padding: 12px; border-bottom: 1px solid #f1f3f5; }
 .bg-danger { background: #fa5252; }
 .bg-warn { background: #fab005; }
 .bg-success { background: #40c057; }
+
 
 
 </style>
