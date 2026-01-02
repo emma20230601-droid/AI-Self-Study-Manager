@@ -2,7 +2,7 @@
   <div class="login-wrapper">
     <el-card class="login-card" :body-style="{ padding: '40px' }">
       <div class="login-header">
-        <h2 class="title">自學管理系統</h2>
+        <h2 class="title">自主學習導航系統</h2>
         <p class="subtitle">請登入您的帳號以繼續</p>
       </div>
 
@@ -126,3 +126,4 @@ const login = async () => {
   color: #606266;
 }
 </style>
+
