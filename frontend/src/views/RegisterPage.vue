@@ -54,7 +54,7 @@ const handleRegister = async () => {
     <el-card class="register-card" :body-style="{ padding: '40px' }">
       <div class="register-header">
         <h2 class="title">建立新帳號</h2>
-        <p class="subtitle">加入自學管理系統，開啟智慧學習之旅</p>
+        <p class="subtitle">加入自主學習導航系統，開啟智慧學習之旅</p>
       </div>
 
       <el-form label-position="top">
@@ -150,3 +150,4 @@ const handleRegister = async () => {
   margin-bottom: 18px;
 }
 </style>
+
