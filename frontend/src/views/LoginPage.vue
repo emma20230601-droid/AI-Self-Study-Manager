@@ -62,7 +62,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 // 1. 導入統一封裝的 request
-import request from '@/api/request' 
+import request from '@/api/request.js' 
 
 const router = useRouter()
 const username = ref('')
@@ -171,4 +171,5 @@ const login = async () => {
     margin-bottom: 25px;
   }
 }
+
 </style>
