@@ -128,26 +128,22 @@ const filters = reactive({
 });
 
 const userId = parseInt(localStorage.getItem('user_id'));
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const fetchData = async () => {
   loading.value = true;
   try {
-    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/review/list`, {
+    const res = await axios.get(`${API_BASE}/api/review/list`, {
       params: { 
         subject: currentSubject.value, 
         user_id: userId,
         start: filters.start, 
         end: filters.end 
-      },
-      withCredentials: true // 💡 雲端通訊一定要加這個
+      }
     });
+
     // 將後端的 ai_insight 映射到前端使用的 insight 欄位
-    records.value = res.data.map(item => ({ 
-      ...item, 
-      isAnalyzing: false,
-      clean_note: item.clean_note || item.student_note || "無筆記", // 增加相容性
-      insight: item.insight || item.ai_insight || "" 
-    }));
+    records.value = res.data.map(item => ({ ...item, isAnalyzing: false }));
   } catch (error) {
     console.error("讀取失敗:", error);
     ElMessage.error("讀取資料失敗");
@@ -160,14 +156,12 @@ const getAiDiagnose = async (row) => {
   if (row.isAnalyzing) return;
   row.isAnalyzing = true; 
   try {
-    const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/review/ai_diagnose`, {
+    const res = await axios.post(`${API_BASE}/api/review/ai_diagnose`, {
       id: row.id, 
       subject: row.subject, 
       unit: row.unit, 
       note: row.clean_note, 
       user_id: userId
-    }, {
-      withCredentials: true // 💡 必須加上，否則會被跨域攔截
     });
     if (res.data.insight) {
       row.insight = res.data.insight;
@@ -188,12 +182,9 @@ const selectSubject = (name) => {
 const toggleStatus = async (item) => {
   item.is_corrected = !item.is_corrected;
   try {
-    const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/review/toggle`, { 
+    await axios.post(`${API_BASE}/api/review/toggle`, { 
       id: item.id, 
-      is_corrected: item.is_corrected,
-      user_id: userId // 建議加上，方便後端驗證權限
-    }, {
-      withCredentials: true // 跨域憑證
+      is_corrected: item.is_corrected 
     });
   } catch (e) {
     ElMessage.error("更新失敗");
@@ -289,7 +280,127 @@ onMounted(fetchData);
 .check-box.checked { background: #40c057; border-color: #40c057; color: white; }
 .refresh-btn { margin-left: auto; color: #adb5bd !important; }
 
+/* ==========================================================================
+   手機版 RWD 優化 (僅在 768px 以下生效)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .review-container {
+    padding: 10px !important;
+    background: #ffffff !important; /* 洗白背景 */
+  }
 
+  /* 1. Header 佈局調整：將日期與標題垂直排列 */
+  .header-card {
+    padding: 15px !important;
+    margin-bottom: 15px !important;
+    border-radius: 12px !important;
+  }
+
+  .top-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 15px;
+  }
+
+  .top-row h2 {
+    font-size: 1.25rem !important;
+  }
+
+  .date-picker {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .date-picker input {
+    flex: 1;
+    width: 40%; /* 確保兩個 input 不會擠在一起 */
+    font-size: 13px !important;
+    padding: 6px !important;
+  }
+
+  /* 2. 科目分頁：改為橫向滑動 (解決按鈕換行問題) */
+  .subject-tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 10px;
+    gap: 8px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .subject-tabs::-webkit-scrollbar {
+    display: none; /* 隱藏捲動條讓畫面更乾淨 */
+  }
+
+  .tab-btn {
+    flex: 0 0 auto; /* 防止按鈕被壓縮 */
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+  }
+
+  /* 3. 卡片佈局重組：解決資訊擠壓 */
+  .error-card {
+    padding: 15px !important;
+    flex-direction: column !important; /* 手機版將 Checkbox 置於頂部或左側 */
+    position: relative;
+  }
+
+  .info-zone {
+    padding-left: 0 !important;
+    margin-top: 10px;
+  }
+
+  .info-header {
+    flex-direction: column; /* 讓標籤與分數/日期垂直分開 */
+    gap: 10px;
+  }
+
+  .header-left {
+    flex-wrap: wrap; /* 標籤太長時可換行 */
+  }
+
+  /* 4. 分數與日期：在手機版改為並排靠左 */
+  .header-right {
+    width: 100%;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 15px !important;
+    margin-top: 5px;
+  }
+
+  .score-val {
+    font-size: 1.4rem !important;
+  }
+
+  .date-badge {
+    padding: 3px 8px !important;
+  }
+
+  /* 5. 內容字體微調 */
+  .note-content {
+    font-size: 1rem !important;
+    margin: 10px 0 !important;
+  }
+
+  /* 6. AI 診斷區塊優化 */
+  .ai-insight-box {
+    padding: 12px !important;
+  }
+
+  .ai-guidance {
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+  }
+
+  .magic-btn-el {
+    height: 44px !important;
+    font-size: 14px !important;
+  }
+
+  /* 7. Checkbox 樣式調整：固定在右上方 */
+  .check-zone {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+  }
+}
 </style>
-
-

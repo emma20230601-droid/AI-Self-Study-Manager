@@ -124,6 +124,7 @@ const allSubjects = ['國語','數學','英文','社會','自然','生物','理�
 
 const coreSubjects = ['國語','數學','英文','社會','自然']
 const coreTypes = ['自修','評量','學校課本','學校作業','考卷']
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 // --- 新增：動態日期處理 ---
 const getTargetExamDates = async () => {
@@ -134,10 +135,8 @@ const getTargetExamDates = async () => {
   // 2. 如果 LocalStorage 沒有，則從 API 抓取
   if (!midterm || !final) {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/tasks`, {
-        params: { user_id: userId },
-        withCredentials: true
-      });
+      const res = await axios.get(`${API_BASE}/api/config/global?user_id=${userId}`)
+       
       if (res.data) {
         midterm = res.data.midterm_date
         final = res.data.final_date
@@ -162,10 +161,7 @@ const loadTasks = async () => {
     // 獲取最新的考期設定
     const { midterm, final } = await getTargetExamDates()
     
-    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/progress/with_tasks`, {
-      params: { user_id: userId },
-      withCredentials: true
-    });
+    const res = await axios.get(`${API_BASE}/progress/with_tasks?user_id=${userId}`)
     const allTasks = res.data
     const today = dayjs().startOf('day')
 
@@ -254,4 +250,83 @@ h2 { font-size: 2rem; font-weight: 800; color: #1a1a1a; margin: 0; }
 .science { background: #2e7d32; }
 .other-sub { background: #607d8b; }
 
+/* ==========================================================================
+   手機版 RWD 優化 (僅在 768px 以下生效)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .missing-tasks-container {
+    padding: 10px !important;
+    background-color: #ffffff !important; /* 洗白背景 */
+  }
+
+  .main-card-full {
+    padding: 5px !important;
+  }
+
+  /* 1. Header 標題與篩選器重組 */
+  .page-header {
+    flex-direction: column !important; /* 改為垂直排列 */
+    align-items: flex-start !important;
+    gap: 15px;
+    padding-bottom: 20px !important;
+  }
+
+  h2 {
+    font-size: 1.5rem !important; /* 縮小標題 */
+  }
+
+  .header-hint {
+    font-size: 0.9rem !important;
+  }
+
+  /* 讓三個篩選組件各佔一行並填滿 */
+  .filter-section {
+    flex-direction: column !important;
+    width: 100%;
+    gap: 10px !important;
+  }
+
+  /* 強制覆蓋 Element Plus 組件寬度 */
+  :deep(.el-range-editor.el-input__wrapper),
+  :deep(.el-select) {
+    width: 100% !important;
+  }
+
+  /* 2. 表格區塊優化：關鍵在於滾動保護 */
+  .table-scroll-area {
+    margin-top: 10px;
+  }
+
+  .section-title {
+    font-size: 1.1rem !important;
+    flex-wrap: wrap; /* 讓標籤在太擠時換行 */
+    gap: 5px !important;
+  }
+
+  /* 讓表格容器可以橫向滑動，防止擠壓內容 */
+  :deep(.el-table) {
+    font-size: 13px !important;
+  }
+
+  /* 設定表格最小寬度，確保欄位不會縮成一團 */
+  :deep(.el-table__body), 
+  :deep(.el-table__header) {
+    min-width: 600px !important; /* 這是防止亂掉的核心 */
+  }
+
+  /* 3. 進度條優化 */
+  :deep(.el-progress-bar) {
+    padding-right: 40px !important; /* 為百分比文字留空間 */
+  }
+
+  /* 4. 間距調整 */
+  .mt-30 {
+    margin-top: 25px !important;
+  }
+
+  .empty-status {
+    padding: 20px !important;
+    font-size: 0.9rem;
+  }
+}
 </style>

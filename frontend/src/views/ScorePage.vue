@@ -126,6 +126,7 @@ const selectedExam = ref('all')
 const activeAnalysisSubject = ref('國語')
 const radarChartRef = ref(null)
 let radarChart = null
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 // --- 資料過濾 ---
 const filteredTasks = computed(() => {
@@ -275,14 +276,26 @@ const getScoreTextColor = (s) => (s < 60) ? 'c-red' : (s < 90 ? 'c-orange' : 'c-
 const examTitle = computed(() => selectedExam.value === 'midterm' ? '期中' : (selectedExam.value === 'final' ? '期末' : '全學期'))
 const handleExamChange = () => { nextTick(() => { renderRadar(); renderTrend(); }) }
 
+
+
+// 在 onMounted 中加入監聽
 onMounted(async () => {
-  const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/progress/with_tasks`, {
-    params: { user_id: userId },
-    withCredentials: true
-  });
+  const res = await axios.get(`${API_BASE}/progress/with_tasks?user_id=${userId}`)
   progressList.value = res.data
   handleExamChange()
+
+  // 新增：視窗大小改變時，重新計算所有圖表大小
+  window.addEventListener('resize', () => {
+    radarChart?.resize()
+    // 針對目前顯示的趨勢圖也做 resize
+    const trendDom = document.getElementById('trend-chart-' + activeAnalysisSubject.value)
+    if (trendDom) {
+      echarts.getInstanceByDom(trendDom)?.resize()
+    }
+  })
 })
+
+
 watch(activeAnalysisSubject, renderTrend)
 const customProgressColors = [{ color: '#f56c6c', percentage: 40 }, { color: '#e6a23c', percentage: 70 }, { color: '#67c23a', percentage: 100 }]
 </script>
@@ -310,5 +323,114 @@ const customProgressColors = [{ color: '#f56c6c', percentage: 40 }, { color: '#e
 .trend-chart { height: 320px; width: 100%; }
 .unit-scroll-list { max-height: 320px; overflow-y: auto; }
 .unit-item { background: #fff; padding: 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #e2e8f0; }
+
+/* ==========================================================================
+   手機版 RWD 優化 (僅在 768px 以下生效，不影響電腦版)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .analysis-container {
+    padding: 10px !important; /* 縮小外邊距 */
+    background-color: #ffffff; /* 統一手機版為純白背景 */
+  }
+
+  .main-card {
+    border-radius: 0; /* 手機版卡片不留圓角，更像原生 App */
+    box-shadow: none;
+  }
+
+  /* 標題區塊改為垂直排列 */
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .main-title {
+    font-size: 1.3rem !important;
+  }
+
+  /* 隱藏匯出 PDF 按鈕，因為手機端 html2canvas 支援度較差且排版不合適 */
+  .action-group {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .action-group .el-button {
+    padding: 8px 12px;
+  }
+
+  /* --- 核心佈局修正：將 Row/Col 改為垂直堆疊 --- */
+  :deep(.el-row) {
+    display: flex;
+    flex-direction: column !important;
+    margin: 0 !important;
+  }
+
+  :deep(.el-col) {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin-bottom: 20px;
+  }
+
+  /* 雷達圖高度調整 */
+  .radar-section {
+    height: 300px;
+    margin-bottom: 20px;
+  }
+  
+  /* 診斷網格取消左右間距 */
+  .diagnosis-grid {
+    gap: 10px;
+  }
+  
+  .diag-item {
+    padding: 15px;
+  }
+
+  /* --- 表格滾動優化 --- */
+  .table-container {
+    margin-top: 20px;
+    width: 100%;
+    overflow-x: auto; /* 允許表格水平滑動 */
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .styled-table {
+    font-size: 12px !important;
+  }
+
+  /* --- 單元進度區塊 (Tabs 內容) --- */
+  :deep(.el-tabs__content) {
+    padding: 10px !important;
+  }
+
+  .trend-chart {
+    height: 250px !important; /* 縮小趨勢圖高度 */
+    margin-bottom: 20px;
+  }
+
+  .unit-scroll-list {
+    max-height: none; /* 在手機上取消滾動，直接列出 */
+  }
+
+  .unit-item {
+    padding: 10px;
+  }
+
+  .u-name {
+    font-size: 14px;
+  }
+
+  /* 修正加權總分的藥丸樣式，防止在窄螢幕變形 */
+  .final-score-pill {
+    width: 60px;
+    height: 28px;
+    line-height: 28px;
+    font-size: 12px;
+  }
+}
 
 </style>

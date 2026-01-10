@@ -98,11 +98,9 @@ import { ref, reactive, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
 import { ElMessage } from 'element-plus';
 
-// 💡 取得環境變數中的後端網址
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
-
 const currentSubject = ref('社會');
 const userId = parseInt(localStorage.getItem('user_id'));
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const quizResult = ref('');
 const generating = ref(false);
 
@@ -122,17 +120,15 @@ const analysis = ref({
   concept_map: {}
 });
 
-// 計算弱點單元
+// 💡 計算屬性：從 unit_stats 中過濾出分數較低的單元 (例如低於 90 分)
 const weakUnits = computed(() => {
   return (analysis.value.unit_stats || [])
     .filter(item => item.avg < 90)
-    .sort((a, b) => a.avg - b.avg);
+    .sort((a, b) => a.avg - b.avg); // 分數最低的排在前面
 });
 
-// 當學科或日期改變時，重新抓取數據
-watch([currentSubject, () => filters.start, () => filters.end], () => {
+watch(currentSubject, () => {
   quizResult.value = ''; 
-  fetchAnalysis();
 });
 
 const fetchAnalysis = async () => {
@@ -141,34 +137,27 @@ const fetchAnalysis = async () => {
     return;
   }
   try {
-    // 🚀 修改點：使用 API_BASE 並加上 withCredentials
     const res = await axios.get(`${API_BASE}/api/teacher/analysis`, {
       params: { 
         subject: currentSubject.value, 
         start: filters.start, 
         end: filters.end,
         user_id: userId
-      },
-      withCredentials: true
+      }
     });
     analysis.value = res.data;
   } catch (err) {
     console.error("看板數據讀取失敗:", err);
-    // ElMessage.error("讀取看板數據失敗");
   }
 };
 
 const generateAIQuiz = async () => {
-  if (generating.value) return;
   generating.value = true;
   quizResult.value = ""; 
   try {
-    // 🚀 修改點：使用 API_BASE 並加上 withCredentials
     const res = await axios.post(`${API_BASE}/api/teacher/generate_quiz`, {
       subject: currentSubject.value,
       user_id: userId 
-    }, {
-      withCredentials: true
     });
     
     if (res.data.quiz_content) {
@@ -178,8 +167,7 @@ const generateAIQuiz = async () => {
       ElMessage.warning(res.data.error || "無法生成考卷");
     }
   } catch (err) {
-    console.error("AI 生成失敗:", err);
-    ElMessage.error("生成失敗，請檢查後端 AI 模組設定。");
+    ElMessage.error("生成失敗，請檢查後端連線。");
   } finally {
     generating.value = false;
   }
@@ -258,6 +246,106 @@ td { padding: 12px; border-bottom: 1px solid #f1f3f5; }
 .bg-warn { background: #fab005; }
 .bg-success { background: #40c057; }
 
+/* ==========================================================================
+   手機版 RWD 優化 (僅在 768px 以下生效)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .teacher-dashboard {
+    padding: 12px !important;
+    background: #ffffff !important; /* 洗白背景 */
+  }
 
+  /* 1. Header 標題與過濾器改為垂直排列 */
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    margin-bottom: 20px;
+    gap: 15px;
+  }
 
+  .title-zone h1 {
+    font-size: 1.4rem !important;
+  }
+
+  .filter-controls {
+    width: 100%;
+    align-items: flex-start !important;
+  }
+
+  .date-group {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .date-group input {
+    flex: 1;
+    width: 40%;
+    font-size: 13px;
+  }
+
+  .subject-select {
+    width: 100% !important; /* 科目選擇器在手機版撐滿 */
+  }
+
+  /* 2. Overview 數據卡片由 1x2 改為 2x1 (垂直堆疊) */
+  .overview-grid {
+    grid-template-columns: 1fr !important; 
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 15px !important;
+  }
+
+  /* 3. 弱點單元列表優化 */
+  .weak-info {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .weak-count {
+    align-self: flex-start; /* 錯誤次數標籤靠左 */
+  }
+
+  /* 4. AI 按鈕與結果區塊 */
+  .ai-btn {
+    padding: 14px !important;
+    font-size: 15px !important;
+  }
+
+  .quiz-body {
+    max-height: 400px;
+    font-size: 14px !important;
+    padding: 10px !important;
+  }
+
+  .quiz-footer {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start !important;
+  }
+
+  /* 5. 表格：最關鍵的處理 (改為水平滑動) */
+  .table-container {
+    width: 100%;
+    overflow-x: auto; /* 允許橫向滑動 */
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #f1f3f5;
+    border-radius: 8px;
+  }
+
+  table {
+    min-width: 500px; /* 強制表格維持一定寬度，確保內容不擠壓 */
+  }
+
+  th, td {
+    padding: 10px 8px !important;
+    font-size: 13px;
+  }
+
+  /* 6. 診斷區塊標題縮小 */
+  h3 {
+    font-size: 1.1rem !important;
+  }
+}
 </style>

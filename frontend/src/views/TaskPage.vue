@@ -152,9 +152,8 @@ import { Edit, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import dayjs from 'dayjs'
 
-// 1. 定義 API 基礎網址
-const API_BASE = import.meta.env.VITE_API_BASE_URL
 const userId = parseInt(localStorage.getItem('user_id'))
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 // 篩選控制
 const dateRange = ref([]) 
@@ -171,94 +170,26 @@ const subjectOrder = ['國語', '數學', '英文', '社會', '自然', '生物'
 const subjectOrderFull = [...subjectOrder, '藝術', '其它']
 const typeOrder = ['自修', '評量', '學校課本', '學校作業', '考卷', '小科', '加深加廣', '戶外活動', '考試', '報名']
 
-// --- API 函式區 ---
-
 const fetchTasks = async () => {
-  if (!userId) return
   try {
-    // 修正路徑：localhost -> API_BASE
-    const res = await axios.get(`${API_BASE}/tasks`, {
-      params: { user_id: userId }
-    })
+    const res = await axios.get(`${API_BASE}/tasks?user_id=${userId}`)
     taskList.value = res.data
     sortTasks()
   } catch (err) {
-    console.error('載入失敗:', err)
-    ElMessage.error('任務載入失敗，請檢查後端狀態')
+    ElMessage.error('載入失敗，請檢查網路連接')
   }
 }
 
-const addTask = async () => {
-  if (!taskForm.value.unit || !taskForm.value.title) return ElMessage.warning('請輸入單元與內容')
-  try {
-    const payload = { 
-      ...taskForm.value, 
-      user_id: userId, 
-      date: dayjs(taskForm.value.date).format('YYYY-MM-DD'), 
-      status: '未開始' 
-    }
-    // 修正路徑
-    const res = await axios.post(`${API_BASE}/tasks`, payload)
-    taskList.value.unshift(res.data)
-    taskForm.value = { subject: '國語', type: '自修', unit: '', title: '', date: new Date() }
-    ElMessage.success('任務已新增')
-  } catch (err) { 
-    ElMessage.error('新增失敗') 
-  }
+const handleFilterChange = () => {
+  // 日期區間變動時可額外處理邏輯，目前由 computed 自動處理
 }
-
-const updateStatus = async (task) => {
-  try {
-    // 修正路徑
-    await axios.patch(`${API_BASE}/tasks/${task.id}`, { 
-      status: task.status, 
-      user_id: userId 
-    })
-    ElMessage.success(`進度更新：${task.status}`)
-  } catch (err) { 
-    ElMessage.error('更新失敗') 
-  }
-}
-
-const updateTask = async () => {
-  try {
-    // 修正路徑
-    const res = await axios.patch(`${API_BASE}/tasks/${editingTask.value.id}`, { 
-      ...editingTask.value, 
-      user_id: userId 
-    })
-    const idx = taskList.value.findIndex(t => t.id === editingTask.value.id)
-    if (idx !== -1) taskList.value[idx] = res.data
-    showEditDialog.value = false
-    ElMessage.success('修改已儲存')
-  } catch (err) { 
-    ElMessage.error('儲存失敗') 
-  }
-}
-
-const deleteTask = async (id) => {
-  try {
-    await ElMessageBox.confirm('確定要永久刪除此任務嗎？', '提醒', {
-      confirmButtonText: '確定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    // 修正路徑
-    await axios.delete(`${API_BASE}/tasks/${id}`, { 
-      params: { user_id: userId } 
-    })
-    taskList.value = taskList.value.filter(t => t.id !== id)
-    ElMessage.success('已刪除任務')
-  } catch (err) {
-    // 使用者取消刪除不噴錯
-  }
-}
-
-// --- 輔助函式區 ---
 
 const filteredTasks = computed(() => {
   return taskList.value.filter(task => {
+    // 科目篩選邏輯
     const matchSubject = !selectedSubject.value || task.subject === selectedSubject.value
+    
+    // 日期區間篩選邏輯
     let matchDate = true
     if (dateRange.value && dateRange.value.length === 2) {
       const start = dayjs(dateRange.value[0]).startOf('day')
@@ -275,9 +206,61 @@ const sortTasks = () => {
   taskList.value.sort((a, b) => new Date(b.date) - new Date(a.date))
 }
 
+const addTask = async () => {
+  if (!taskForm.value.unit || !taskForm.value.title) return ElMessage.warning('請輸入單元與內容')
+  try {
+    const payload = { 
+      ...taskForm.value, 
+      user_id: userId, 
+      date: dayjs(taskForm.value.date).format('YYYY-MM-DD'), 
+      status: '未開始' 
+    }
+    const res = await axios.post(`${API_BASE}/tasks`, payload)
+    taskList.value.unshift(res.data)
+    taskForm.value = { subject: '國語', type: '自修', unit: '', title: '', date: new Date() }
+    ElMessage.success('任務已新增')
+  } catch (err) { ElMessage.error('新增失敗') }
+}
+
+const updateStatus = async (task) => {
+  try {
+    await axios.patch(`${API_BASE}/tasks/${task.id}`, { 
+      status: task.status, 
+      user_id: userId 
+    })
+    ElMessage.success(`進度更新：${task.status}`)
+  } catch (err) { ElMessage.error('更新失敗') }
+}
+
 const openEditDialog = (row) => { 
   editingTask.value = { ...row }
   showEditDialog.value = true 
+}
+
+const updateTask = async () => {
+  try {
+    const res = await axios.patch(`${API_BASE}/tasks/${editingTask.value.id}`, { 
+      ...editingTask.value, 
+      user_id: userId 
+    })
+    const idx = taskList.value.findIndex(t => t.id === editingTask.value.id)
+    if (idx !== -1) taskList.value[idx] = res.data
+    showEditDialog.value = false
+    ElMessage.success('修改已儲存')
+  } catch (err) { ElMessage.error('儲存失敗') }
+}
+
+const deleteTask = async (id) => {
+  try {
+    await ElMessageBox.confirm('確定要永久刪除此任務嗎？', '提醒', {
+      confirmButtonText: '確定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await axios.delete(`${API_BASE}/tasks/${id}`, { params: { user_id: userId } })
+    taskList.value = taskList.value.filter(t => t.id !== id)
+    ElMessage.success('已刪除任務')
+  } catch (err) {}
 }
 
 const getSubjectColorClass = (s) => {
@@ -286,7 +269,6 @@ const getSubjectColorClass = (s) => {
 }
 
 const formatDate = (d) => d ? dayjs(d).format('YYYY-MM-DD') : '--'
-
 onMounted(fetchTasks)
 </script>
 
@@ -345,4 +327,106 @@ onMounted(fetchTasks)
   display: none;
 }
 
+/* ==========================================================================
+   手機版 RWD 優化 (僅在 768px 以下生效)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .task-list-page {
+    padding: 10px !important;
+    background: #ffffff !important; /* 洗白背景 */
+  }
+
+  .list-card {
+    padding: 5px !important;
+  }
+
+  /* 1. 標頭區塊：標題與篩選垂直排列 */
+  .header-section {
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+
+  .title-info h2 {
+    font-size: 1.3rem !important;
+  }
+
+  .filter-controls {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* 修正日期區間選擇器寬度 */
+  .range-picker.el-range-editor.el-input__wrapper {
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .filter-controls .el-select {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  /* 2. 新增任務表單：從橫向變為多行 */
+  .add-task-form {
+    padding: 15px !important;
+  }
+
+  :deep(.add-task-form .el-row) {
+    display: flex;
+    flex-direction: column !important;
+    gap: 10px;
+    margin: 0 !important;
+  }
+
+  :deep(.add-task-form .el-col) {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  /* 3. 表格優化：手機版「瘦身」策略 */
+  
+  /* 隱藏較不重要的欄位：分類項目(第2欄)、內容詳情(第4欄) */
+  :deep(.el-table__header-wrapper th:nth-child(2)),
+  :deep(.el-table__body-wrapper td:nth-child(2)),
+  :deep(.el-table__header-wrapper th:nth-child(4)),
+  :deep(.el-table__body-wrapper td:nth-child(4)) {
+    display: none !important;
+  }
+
+  /* 調整其餘欄位寬度 */
+  :deep(.el-table) {
+    font-size: 13px !important;
+  }
+
+  .date-display {
+    font-size: 12px;
+  }
+
+  .unit-text {
+    font-size: 14px !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* 最多顯示兩行 */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* 讓進度選擇器變窄一點 */
+  :deep(.el-table .el-select--small) {
+    width: 85px !important;
+  }
+
+  /* 4. 修改 Dialog 在手機上的寬度 */
+  :deep(.el-dialog) {
+    width: 90% !important;
+    margin-top: 15vh !important;
+  }
+
+  :deep(.el-form-item__label) {
+    width: 80px !important;
+  }
+}
 </style>

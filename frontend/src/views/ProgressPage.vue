@@ -22,11 +22,11 @@
             placeholder="選擇科目" 
             clearable 
             size="large" 
-            style="width: 140px; margin-left: 10px;"
+            style="width: 140px"
           >
             <el-option v-for="item in subjectOrder" :key="item" :label="item" :value="item" />
           </el-select>
-          <el-button @click="clearFilter" size="large" round style="margin-left: 10px;">清除篩選</el-button>
+          <el-button @click="clearFilter" size="large" round>清除篩選</el-button>
         </div>
       </div>
 
@@ -71,6 +71,7 @@
               :step="10"
               show-input
               class="custom-slider"
+              :class="scope.row.progress_percent < 100 ? 'slider-not-finished' : 'slider-finished'"
             />
           </template>
         </el-table-column>
@@ -125,14 +126,12 @@ const userId = parseInt(localStorage.getItem('user_id'))
 const progressList = ref([])
 
 const subjectOrder = ['國語', '數學', '英文', '社會', '自然', '其它']
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const fetchProgress = async () => {
   try {
-     const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/progress/with_tasks`, {
-      params: { user_id: userId },
-      withCredentials: true
-    });
-
+    // 修正路徑使用樣板字串
+    const res = await axios.get(`${API_BASE}/progress/with_tasks?user_id=${userId}`)
     progressList.value = res.data.map(item => {
       const isCompleted = Number(item.progress_percent) === 100 || item.status === '已完成'
       return {
@@ -141,7 +140,7 @@ const fetchProgress = async () => {
         daysLeft: getDaysLeft(item.target_date, isCompleted),
       }
     })
-  } catch (err) { console.error('抓取資料失敗:', err) }
+  } catch (err) { console.error('API Error:', err) }
 }
 
 const filteredAndSortedList = computed(() => {
@@ -160,7 +159,6 @@ const tableRowClassName = ({ row }) => {
 }
 
 const saveProgress = async (row) => {
-  // 1. 分數必填校驗
   if (row.score === null || row.score === undefined || String(row.score).trim() === '') {
     ElMessage.warning({
       message: `請填寫「${row.subject}」的分數後再儲存`,
@@ -170,48 +168,31 @@ const saveProgress = async (row) => {
     return 
   }
 
-  // 2. 定義 payload (確保在 try 區塊外定義，避免 ReferenceError)
-  const payload = { 
-    task_id: row.task_id, 
-    progress_percent: row.progress_percent, 
-    student_note: row.student_note || '', 
-    score: row.score, 
-    date: dayjs().format('YYYY-MM-DD'), 
-    user_id: userId 
-  }
-
   try {
+    const payload = { 
+      task_id: row.task_id, 
+      progress_percent: row.progress_percent, 
+      student_note: row.student_note, 
+      score: row.score, 
+      date: dayjs().format('YYYY-MM-DD'), 
+      user_id: userId 
+    }
+    
     if (row.id) {
-      try {
-        // 嘗試更新 (PATCH)
-        await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/progress/${row.id}`, payload, { withCredentials: true });
-      } catch (patchErr) {
-        // 關鍵容錯：如果回傳 404，代表雲端資料庫沒這筆 ID，立刻轉為 POST 新增
-        if (patchErr.response?.status === 404) {
-          const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/progress`, payload, { withCredentials: true });
-          row.id = res.data.id; // 回填 ID 供下次 PATCH 使用
-        } else {
-          throw patchErr;
-        }
-      }
+      await axios.patch(`${API_BASE}/progress/${row.id}`, payload)
     } else {
-      // 本來就沒 ID，直接新增 (POST)
-      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/progress`, payload, { withCredentials: true });
-      row.id = res.data.id;
+      const res = await axios.post(`${API_BASE}/progress`, payload) 
+      row.id = res.data.id
     }
     
-    // 3. 進度 100% 同步更新任務表狀態
     if (row.progress_percent === 100) {
-      await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${row.task_id}`, 
-        { status: '已完成', user_id: userId }, 
-        { withCredentials: true }
-      );
+      await axios.patch(`${API_BASE}/tasks/${row.task_id}`, { status: '已完成', user_id: userId })
     }
     
-    ElMessage.success('學習進度已成功儲存！')
+    ElMessage.success('學習進度已成功記錄！')
   } catch (err) { 
-    console.error('儲存失敗:', err)
-    ElMessage.error('儲存失敗，請檢查網路連線或稍後再試') 
+    console.error(err)
+    ElMessage.error('儲存失敗，請檢查網絡連線') 
   }
 }
 
@@ -219,7 +200,9 @@ const getDaysLeft = (targetDate, isCompleted) => isCompleted ? 0 : dayjs(targetD
 const formatDate = (dateStr) => dayjs(dateStr).format('YYYY-MM-DD')
 const clearFilter = () => { selectedMonth.value = null; selectedSubject.value = null }
 
-onMounted(fetchProgress)
+onMounted(async () => {
+  await fetchProgress()
+})
 </script>
 
 <style scoped>
@@ -279,4 +262,81 @@ h2 { font-size: 2.2rem; font-weight: 900; color: #1a1a1a; margin: 0; }
 .row-today td:first-child { border-left: 8px solid #faad14 !important; }
 
 .el-button { border-radius: 12px; font-weight: 600; }
+
+/* ==========================================================================
+   手機版專屬 (只改手機，不動電腦)
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* A. 頁面洗白與固定 */
+  .full-page-container {
+    padding: 0 !important;
+    background: #ffffff !important; /* 強制白底 */
+    height: 100vh !important;
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .main-card-full {
+    height: 100% !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* B. 標題區縮小 */
+  .page-header {
+    flex-direction: column;
+    padding: 10px 15px !important;
+    gap: 10px;
+  }
+  h2 { font-size: 1.4rem !important; }
+  .header-hint { display: none; } /* 手機版隱藏副標題節省空間 */
+
+  /* C. 篩選區寬度自適應 */
+  .filter-section {
+    width: 100%;
+    display: flex;
+    gap: 5px;
+  }
+  .filter-section :deep(.el-date-editor.el-input),
+  .filter-section :deep(.el-select) {
+    flex: 1 !important;
+    width: auto !important;
+  }
+
+  /* D. 表格手機版「瘦身」：隱藏次要欄位，防止水平撐破 */
+  :deep(.el-table__header-wrapper th:nth-child(2)), /* 類型 */
+  :deep(.el-table__body-wrapper td:nth-child(2)),
+  :deep(.el-table__header-wrapper th:nth-child(3)), /* 單元 */
+  :deep(.el-table__body-wrapper td:nth-child(3)) {
+    display: none !important;
+  }
+
+  /* E. 讓表格內部可以水平滑動，但外層不動 */
+  :deep(.el-table) {
+    width: 100% !important;
+    font-size: 13px !important;
+  }
+
+  /* F. 讓進度條在手機上變短，避免擠壓 */
+  .custom-slider {
+    width: 120px !important;
+  }
+
+  /* G. 調整輸入框高度與字體 */
+  :deep(.el-textarea__inner) {
+    font-size: 13px !important;
+    padding: 5px !important;
+  }
+
+  /* H. 鎖定 el-main 防止灰底與晃動 */
+  :deep(.el-main) {
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow-x: hidden !important;
+  }
+}
 </style>
