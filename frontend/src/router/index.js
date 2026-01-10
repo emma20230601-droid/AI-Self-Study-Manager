@@ -5,7 +5,6 @@ import ProgressPage from '../views/ProgressPage.vue'
 import CalendarPage from '../views/CalendarPage.vue'
 import ReportPage from '../views/ReportPage.vue'
 import ScorePage from '../views/ScorePage.vue'
-import AIPianoPage from '../views/AIPianoScore.vue'
 import LoginPage from '../views/LoginPage.vue' 
 import RegisterPage from '../views/RegisterPage.vue' // 1. 匯入註冊頁面
 import ReviewDashboardPage from '../views/ReviewDashboard.vue'
@@ -21,7 +20,6 @@ const routes = [
   { path: '/calendar', component: CalendarPage },
   { path: '/report', component: ReportPage },
   { path: '/score', component: ScorePage },
-  { path: '/aipiano', component: AIPianoPage },
   { path: '/review', component: ReviewDashboardPage },
   { path: '/teacher', component: TeacherAnalysisPage },
   { path: '/settings', component: SettingsPage },
