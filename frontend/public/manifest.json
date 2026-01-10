@@ -1,0 +1,16 @@
+{
+  "name": "自主學習導航系統",
+  "short_name": "自主學習",
+  "description": "自律養成、自行規劃、AI伴讀",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#409eff",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
