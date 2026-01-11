@@ -36,31 +36,37 @@ db.init_app(app)
 
 # --- 2. CORS 終極設定 ---
 
-# 請將下面的 FRONTEND_URL 換成你 Render Static Site 的網址
-FRONTEND_URL = "https://ai-self-study-manager.onrender.com"
+# 使用清單，同時允許 Render 前端、本機測試
+ALLOWED_ORIGINS = [
+    "https://ai-self-study-manager.onrender.com",   # 你的 Render 前端網址
+    "http://localhost:5173",                       # 本機開發網址
+    "http://127.0.0.1:5173"
+]
 
-# A. 基礎 Flask-CORS 宣告
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": FRONTEND_URL}})
-
-# B. 前置攔截
 @app.before_request
 def handle_preflight():
     if request.method == "OPTIONS":
-        res = make_response()
-        res.headers.add("Access-Control-Allow-Origin", FRONTEND_URL) # 修改這裡
-        res.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
-        res.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
-        res.headers.add("Access-Control-Allow-Credentials", "true")
-        return res, 200
+        origin = request.headers.get("Origin")
+        if origin in ALLOWED_ORIGINS:
+            res = make_response()
+            res.headers.add("Access-Control-Allow-Origin", origin)
+            res.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+            res.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+            res.headers.add("Access-Control-Allow-Credentials", "true")
+            return res, 200
 
-# C. 後置處理
 @app.after_request
 def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = FRONTEND_URL # 修改這裡
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
+    origin = request.headers.get("Origin")
+    if origin in ALLOWED_ORIGINS:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
+
+# 基礎宣告也要同步
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": ALLOWED_ORIGINS}})
     
 # --- 3. 自動建立資料庫表 ---
 with app.app_context():
@@ -110,6 +116,7 @@ def hello():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
