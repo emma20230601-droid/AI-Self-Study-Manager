@@ -3,10 +3,11 @@ import { ElMessage } from 'element-plus';
 
 // 建立實例
 const service = axios.create({
-  // 這裡讀取你 .env 裡的設定
-  baseURL: import.meta.env.VITE_API_BASE_URL, 
-  timeout: 10000, // 10秒沒回應就斷開
-  withCredentials: true // 跨域請求時是否攜帶 Cookie
+  // 直接填入你確認過的後端網址
+  baseURL: 'https://ai-self-study-manager.onrender.com', 
+  //baseURL: import.meta.env.VITE_API_BASE_URL, 
+  timeout: 10000,
+  withCredentials: true 
 });
 
 // 【請求攔截器】在發出請求之前可以做的事
@@ -43,5 +44,6 @@ service.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 
 export default service;
