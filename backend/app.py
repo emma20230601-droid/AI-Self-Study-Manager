@@ -37,7 +37,7 @@ db.init_app(app)
 # --- 2. CORS 終極設定 ---
 
 # 請將下面的 FRONTEND_URL 換成你 Render Static Site 的網址
-FRONTEND_URL = "https://你的前端專案名稱.onrender.com"
+FRONTEND_URL = "https://ai-self-study-manager.onrender.com"
 
 # A. 基礎 Flask-CORS 宣告
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": FRONTEND_URL}})
@@ -110,6 +110,7 @@ def hello():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
