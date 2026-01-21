@@ -230,7 +230,7 @@ const saveAllSettings = async () => {
   saving.value = true
   try {
     // 1. 儲存出版社與年級
-    await axios.post(`${API_BASE}/api/config/publishers', { 
+    await axios.post(`${API_BASE}/api/config/publishers`, { 
       user_id: userId, 
       configs: localConfigs.value 
     })
@@ -283,3 +283,4 @@ onMounted(loadSettings)
 :deep(.el-table .cell) { font-size: 1.2rem; padding: 15px 0; }
 
 </style>
+
