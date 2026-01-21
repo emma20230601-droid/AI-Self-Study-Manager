@@ -114,7 +114,7 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { Check } from '@element-plus/icons-vue'
-
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const userId = localStorage.getItem('user_id')
 const saving = ref(false)
 
@@ -184,7 +184,7 @@ const loadSettings = async () => {
   if (!userId) return
   try {
     // 1. 先抓取各科設定 (這是在 subject_configs 表格)
-    const resPub = await axios.get(`http://localhost:5000/api/config/publishers?user_id=${userId}`)
+    const resPub = await axios.get(`${API_BASE}/api/config/publishers?user_id=${userId}`)
     
     if (resPub.data && resPub.data.length > 0) {
       // ✅ 如果資料庫有各科紀錄，以資料庫為準
@@ -195,7 +195,7 @@ const loadSettings = async () => {
       // 2. ❗ 如果各科沒紀錄 (新用戶)，我們需要從 User 表格抓取註冊年級
       // 假設你修正了後端，提供一個抓取用戶基本資料的 API
       try {
-        const resUser = await axios.get(`http://localhost:5000/api/config/user_info?user_id=${userId}`)
+        const resUser = await axios.get(`${API_BASE}/api/config/user_info?user_id=${userId}`)
         if (resUser.data && resUser.data.grade) {
           const dbGrade = resUser.data.grade
           // 套用到所有科目
@@ -207,7 +207,7 @@ const loadSettings = async () => {
       }
     }
 
-    const resGlobal = await axios.get(`http://localhost:5000/api/config/global?user_id=${userId}`)
+    const resGlobal = await axios.get(`${API_BASE}/api/config/global?user_id=${userId}`)
     if (resGlobal.data) {
       globalDates.value = { 
         midterm_date: resGlobal.data.midterm_date || '', 
@@ -215,7 +215,7 @@ const loadSettings = async () => {
       }
     }
 
-    const resAI = await axios.get(`http://localhost:5000/api/config/ai?user_id=${userId}`)
+    const resAI = await axios.get(`${API_BASE}/api/config/ai?user_id=${userId}`)
     if (resAI.data && resAI.data.api_key) {
       aiConfig.value = { ...aiConfig.value, ...resAI.data }
     }
@@ -230,13 +230,13 @@ const saveAllSettings = async () => {
   saving.value = true
   try {
     // 1. 儲存出版社與年級
-    await axios.post('http://localhost:5000/api/config/publishers', { 
+    await axios.post(`${API_BASE}/api/config/publishers', { 
       user_id: userId, 
       configs: localConfigs.value 
     })
 
     // 2. 儲存全域設定
-    await axios.post('http://localhost:5000/api/config/global', { 
+    await axios.post(`${API_BASE}/api/config/global`, { 
       user_id: userId, 
       grade: localConfigs.value[0].grade, 
       midterm_date: globalDates.value.midterm_date,
@@ -244,7 +244,7 @@ const saveAllSettings = async () => {
     })
 
     // 3. 儲存 AI 配置
-    await axios.post('http://localhost:5000/api/config/ai', { 
+    await axios.post(`${API_BASE}/api/config/ai`, { 
       user_id: userId, 
       ...aiConfig.value 
     })
@@ -281,4 +281,5 @@ onMounted(loadSettings)
 :deep(.el-form-item__label) { font-size: 1.3rem !important; font-weight: bold !important; color: #333 !important; }
 :deep(.el-input__inner), :deep(.el-select .el-input__inner) { font-size: 1.2rem !important; height: 50px; }
 :deep(.el-table .cell) { font-size: 1.2rem; padding: 15px 0; }
+
 </style>
